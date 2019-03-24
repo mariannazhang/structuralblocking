@@ -1,0 +1,519 @@
+---
+title: Data analysis for "Essentially blocked - Can structural factors block an essentialist interpretation of a formal explanation?"
+author: "Marianna Zhang (marianna.zhang@stanford.edu)"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  pdf_document:
+    toc: yes
+    toc_depth: '3'
+  html_document:
+    toc: yes
+    toc_depth: 3
+    toc_float:
+      collapsed: no
+---
+
+## Introduction
+
+<!-- Abstract.-->
+
+
+<!-- A description of the stimuli and procedures in this experiment.-->
+
+
+This project's [repository](https://github.com/mariannazhang/structuralblocking) and preregistration can be found online. 
+
+
+## Methods
+
+### Power Analysis
+
+Nadya's estimate: 30-50 per cell?
+
+Muradoglu et al (Exp 2 on gender)
+93 5-6yo
+formal explanation -> all 5 DVs - 0, 1 or 0, 0.5, 1
+> Although the main effect of condition was not significant, p = .11, the condition by age interaction was, p = .044. Six-year-olds, but not 5-year olds, showed higher essentialism for properties introduced via formal explanations (ps = .011 and .999, respectively; see Figure 2). Children also gave more essentialist responses with age, p = .003.
+
+Vasilyeva et al
+41 4-5yo, 48 5-6yo, 67 adults
+structural context -> innateness_switch - 1, 2, 3, 4
+> an ANOVA with framing condition and age group as between-subjects factors revealed the predicted main effect of framing, F(1, 85) = 8.95, p = .004, partial_eta_p_sq = .095, with no main effect of age group, F(1, 85) = 1.05, p = .309, nor interaction, F(1, 85) = .01, p = .984. Similarly, adults rated the target property as more mutable under the structural than nonstructural framing, t(65) = 8.04, p = .001, d = 2.00.
+
+```{r}
+# pwr.t.test(d = cohensD(essentialism ~ context * explanation, data = df.means_subj),
+#            power = 0.8,
+#            sig.level = 0.05)
+```
+
+
+### Planned Sample
+
+<!-- Planned sample size and/or termination rule, sampling frame, known demographics if any, preselection rules if any.-->
+
+Planned sample size is 5-year-olds and 6-year-olds recruited from a university preschool and museums, as well as adults recruited on Amazon Mechanical Turk. MTurk participants will be required to be located within the United States, and will be required to have a HIT acceptance rate of 80% or above.
+
+### Materials
+
+
+
+### Procedure	
+
+
+
+The adult survey paradigm can be found on Qualtrics. 
+
+### Analysis Plan
+
+<!-- data cleaning rules, data exclusion rules, covariates, etc. Key analysis of interest. Can also pre-specify additional analyses you plan to do.-->
+
+Essentialism measure for each participant calculated as average of all 5 essentialism measures.
+
+#### Exclusion criteria
+Experimentor error, out of age range. 
+
+#### Analysis of interest
+ANOVA on essentialism measure with an interaction term for context and explanation. 
+
+
+
+
+
+### Methods Addendum (Post Data Collection)
+#### Actual Sample
+<!-- actual sample size, actual power, exclusions, demographics --> 
+
+
+
+#### Differences from pre-data collection methods plan
+
+
+
+
+
+## Results
+
+
+### Data preparation
+
+Data preparation as specified in the analysis plan.
+
+```{r "knitr config", cache = FALSE}
+require("knitr")
+```
+
+
+```{r}
+#### Load relevant libraries and functions
+library(tidyverse)
+
+
+#### Import data for analysis
+df.data <- read_csv("../data/FYP_data_pilot_children_2.csv")
+```
+
+
+```{r}
+#### Data exclusion / filtering
+# Record exclusions: experimentor error, age
+df.excl <- tibble(
+  exp_error = sum(df.data$exp_error == "yes"),
+  age = sum(df.data$age < 5 | df.data$age >= 7)
+  )
+
+# Exclude subjects: experimentor error, age
+df.data <- df.data %>%
+  filter(exp_error == "no" & 
+           (age >= 5 & age < 7)) %>%
+  select(-exp_error, -starts_with("check")) # Delete exp_error, check columns
+```
+
+
+```{r}
+#### Memory check analysis
+
+
+
+
+
+
+```
+
+
+```{r}
+#### Demographics analysis
+# Add age categorical variable
+df.data <- df.data %>% 
+  mutate(age_cat = case_when(
+    age < 5 ~ "4",
+    age >= 5 & age < 6 ~ "5",
+    age >= 6 & age < 7 ~ "6",
+    age >= 7 ~ "7"))
+
+# Age
+df.dem_age <- df.data %>%
+  count(age_cat)
+
+# Gender
+df.dem_gender <- df.data %>%
+  count(gender)
+```
+
+
+
+```{r}
+#### Prepare data for analysis
+
+# Recode essentialism dependent measures
+df.data$fc_expl_group <- df.data$fc_expl_group %>% 
+  recode("Because of the buckets in their classrooms" = 0,
+         "Because girls like playing Yellow-Ball" = 1,
+         "Because girls like playing Green-Ball" = 1)
+df.data$fc_expl_indiv <- df.data$fc_expl_indiv %>% 
+  recode("Because of the buckets in her classroom" = 0,
+         "Because Suzy likes playing Yellow-Ball" = 1,
+         "Because Suzy likes playing Green-Ball" = 1)
+df.data$fc_expl_indiv_size <- df.data$fc_expl_indiv_size %>% 
+  recode("Because of the size of the buckets in her classroom" = 0,
+         "Because Suzy likes playing Yellow-Ball" = 1,
+         "Because Suzy likes playing Green-Ball" = 1)
+
+df.data$normative_group <- df.data$normative_group %>% 
+  recode("Okay" = 0,
+         "Not okay" = 1)
+df.data$normative_indiv <- df.data$normative_indiv %>% 
+  recode("Okay" = 0,
+         "Not okay" = 1)
+
+df.data$inductivePoten <- 
+  if_else(df.data$cb == "girlsYellow", 
+          (recode(df.data$inductivePoten,
+                  "Green-Ball" = 1/6,
+                  "Yellow-Ball" = 5/6,
+                  "For sure Green-Ball" = 0,
+                  "Maybe Green-Ball" = 1/3,
+                  "Maybe Yellow-Ball" = 2/3,
+                  "For sure Yellow-Ball" = 1)),
+          (recode(df.data$inductivePoten,
+                  "Yellow-Ball" = 1/6,
+                  "Green-Ball" = 5/6,
+                  "For sure Yellow-Ball" = 0,
+                  "Maybe Yellow-Ball" = 1/3,
+                  "Maybe Green-Ball" = 2/3,
+                  "For sure Green-Ball" = 1)))
+
+df.data$innateness_switch <- 
+  if_else(df.data$cb == "girlsYellow", 
+          (recode(df.data$innateness_switch,
+                  "For sure Green-Ball" = 0,
+                  "Maybe Green-Ball" = 1/3,
+                  "Maybe Yellow-Ball" = 2/3,
+                  "For sure Yellow-Ball" = 1)),
+          (recode(df.data$innateness_switch,
+                  "For sure Green-Ball" = 1,
+                  "Maybe Green-Ball" = 2/3,
+                  "Maybe Yellow-Ball" = 1/3,
+                  "For sure Yellow-Ball" = 0)))
+
+
+# Gather to tidy long form
+df.tidy <- df.data %>% 
+  select(-starts_with("check"), -ends_with("expl")) %>% 
+  gather(question, response, "fc_expl_indiv":"innateness_switch")
+
+
+# Order questions
+df.tidy$question <-  df.tidy$question %>% 
+  factor(levels=c('fc_expl_indiv_size', 'fc_expl_indiv', 'fc_expl_group', 'normative_indiv', 'normative_group', 'inductivePoten', 'innateness_switch'))
+
+
+# Split dataset by DV set
+df.tidy.1 <- df.tidy %>% 
+  filter(dvs == "fc_expl_group, inductivePoten, normative_indiv, innateness_switch")
+df.tidy.2 <- df.tidy %>% 
+  filter(dvs == "fc_expl_indiv, inductivePoten, normative_group, innateness_switch")
+df.tidy.3 <- df.tidy %>% 
+  filter(dvs == "fc_expl_indiv_size, inductivePoten, normative_group, innateness_switch")
+df.tidy.2.3 <- df.tidy %>% 
+  filter(dvs == "fc_expl_indiv, inductivePoten, normative_group, innateness_switch" | dvs == "fc_expl_indiv_size, inductivePoten, normative_group, innateness_switch")
+
+# Calculate overall essentialism measure per subject
+df.means_subj <- df.tidy %>% 
+  group_by(subject, age, context, explanation, dvs) %>% 
+  summarize(essentialism = mean(response, na.rm = TRUE))
+df.means_subj.1 <- df.tidy.1 %>% 
+  group_by(subject, age, context, explanation, dvs) %>% 
+  summarize(essentialism = mean(response, na.rm = TRUE))
+df.means_subj.2 <- df.tidy.2 %>% 
+  group_by(subject, age, context, explanation, dvs) %>% 
+  summarize(essentialism = mean(response, na.rm = TRUE))
+df.means_subj.3 <- df.tidy.3 %>% 
+  group_by(subject, age, context, explanation, dvs) %>% 
+  summarize(essentialism = mean(response, na.rm = TRUE))
+df.means_subj.2.3 <- df.tidy.2.3 %>% 
+  group_by(subject, age, context, explanation, dvs) %>% 
+  summarize(essentialism = mean(response, na.rm = TRUE))
+
+```
+
+### Preliminary look at data and visualization
+```{r}
+# Overall essentialism measure across subjects by condition
+df.means <- df.tidy %>%
+  group_by(context, explanation) %>% 
+  summarize(essentialism = mean(response, na.rm = TRUE),
+            sd = sd(response, na.rm = TRUE), 
+            n = length(unique(subject)))
+df.means
+
+df.means.1 <- df.tidy.1 %>%
+  group_by(context, explanation) %>% 
+  summarize(essentialism = mean(response, na.rm = TRUE),
+            sd = sd(response, na.rm = TRUE), 
+            n = length(unique(subject)))
+df.means.1
+
+df.means.2 <- df.tidy.2 %>%
+  group_by(context, explanation) %>% 
+  summarize(essentialism = mean(response, na.rm = TRUE),
+            sd = sd(response, na.rm = TRUE), 
+            n = length(unique(subject)))
+df.means.2
+
+df.means.3 <- df.tidy.3 %>%
+  group_by(context, explanation) %>% 
+  summarize(essentialism = mean(response, na.rm = TRUE),
+            sd = sd(response, na.rm = TRUE), 
+            n = length(unique(subject)))
+df.means.3
+
+df.means.2.3 <- df.tidy.2.3 %>%
+  group_by(context, explanation) %>% 
+  summarize(essentialism = mean(response, na.rm = TRUE),
+            sd = sd(response, na.rm = TRUE), 
+            n = length(unique(subject)))
+df.means.2.3
+
+```
+
+```{r}
+# Set visualization theme
+theme_set(
+  ggthemes::theme_few() +
+  theme(text = element_text(size = 16)) # large text size for presentation figures
+)
+```
+
+```{r}
+# Pilot 2.1: essentialism by context and explanation
+ggplot(df.means_subj.1, aes(x = context, y = essentialism, fill = explanation, color = explanation)) +
+  geom_point(position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8),
+             alpha = 0.8) + 
+  stat_summary(fun.data = "mean_cl_boot",
+               position = position_dodge(width = 0.8),
+               geom = "linerange",
+               size = 1,
+               alpha = 0.5) +
+  stat_summary(fun.y = "mean",
+               position = position_dodge(width = 0.8),
+               geom = "point",
+               shape = 21,
+               color = "black",
+               size = 4) +
+  scale_fill_brewer(palette = "Set1") +
+  scale_y_continuous(limits = c(0, 1))
+ggsave("FYP_pilot_children_2.1_contextExpl.png", width = 5)
+
+# Pilot 2.2: essentialism by context and explanation
+ggplot(df.means_subj.2, aes(x = context, y = essentialism, fill = explanation, color = explanation)) +
+  geom_point(position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8),
+             alpha = 0.8) + 
+  stat_summary(fun.data = "mean_cl_boot",
+               position = position_dodge(width = 0.8),
+               geom = "linerange",
+               size = 1,
+               alpha = 0.5) +
+  stat_summary(fun.y = "mean",
+               position = position_dodge(width = 0.8),
+               geom = "point",
+               shape = 21,
+               color = "black",
+               size = 4) +
+  scale_fill_brewer(palette = "Set1") +
+  scale_y_continuous(limits = c(0, 1))
+ggsave("FYP_pilot_children_2.2_contextExpl.png", width = 5)
+
+# Pilot 2.3: essentialism by context and explanation
+ggplot(df.means_subj.3, aes(x = context, y = essentialism, fill = explanation, color = explanation)) +
+  geom_point(position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8),
+             alpha = 0.8) + 
+  stat_summary(fun.data = "mean_cl_boot",
+               position = position_dodge(width = 0.8),
+               geom = "linerange",
+               size = 1,
+               alpha = 0.5) +
+  stat_summary(fun.y = "mean",
+               position = position_dodge(width = 0.8),
+               geom = "point",
+               shape = 21,
+               color = "black",
+               size = 4) +
+  scale_fill_brewer(palette = "Set1") +
+  scale_y_continuous(limits = c(0, 1))
+ggsave("FYP_pilot_children_2.3_contextExpl.png", width = 5)
+
+# Pilot 2.2 + 2.3: essentialism by context and explanation
+ggplot(df.means_subj.2.3, aes(x = context, y = essentialism, fill = explanation, color = explanation)) +
+  geom_point(position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8),
+             alpha = 0.8) + 
+  stat_summary(fun.data = "mean_cl_boot",
+               position = position_dodge(width = 0.8),
+               geom = "linerange",
+               size = 1,
+               alpha = 0.5) +
+  stat_summary(fun.y = "mean",
+               position = position_dodge(width = 0.8),
+               geom = "point",
+               shape = 21,
+               color = "black",
+               size = 4) +
+  scale_fill_brewer(palette = "Set1") +
+  scale_y_continuous(limits = c(0, 1))
+ggsave("FYP_pilot_children_2.2_2.3_contextExpl.png", width = 5)
+
+# Pilot 2.1 (innateness switch only): essentialism by context and explanation
+ggplot(df.tidy.1 %>% filter(question == "innateness_switch"), aes(x = context, y = response, fill = explanation, color = explanation)) +
+  geom_point(position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8),
+             alpha = 0.8) + 
+  stat_summary(fun.data = "mean_cl_boot",
+               position = position_dodge(width = 0.8),
+               geom = "linerange",
+               size = 1,
+               alpha = 0.5) +
+  stat_summary(fun.y = "mean",
+               position = position_dodge(width = 0.8),
+               geom = "point",
+               shape = 21,
+               color = "black",
+               size = 4) +
+  scale_fill_brewer(palette = "Set1") +
+  scale_y_continuous(limits = c(0, 1))
+ggsave("FYP_pilot_children_2.1_contextExpl_innatenessSwitch.png", width = 5)
+
+# Pilot 2.2 (innateness switch only): essentialism by context and explanation
+ggplot(df.tidy.2 %>% filter(question == "innateness_switch"), aes(x = context, y = response, fill = explanation, color = explanation)) +
+  geom_point(position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8),
+             alpha = 0.8) + 
+  stat_summary(fun.data = "mean_cl_boot",
+               position = position_dodge(width = 0.8),
+               geom = "linerange",
+               size = 1,
+               alpha = 0.5) +
+  stat_summary(fun.y = "mean",
+               position = position_dodge(width = 0.8),
+               geom = "point",
+               shape = 21,
+               color = "black",
+               size = 4) +
+  scale_fill_brewer(palette = "Set1") +
+  scale_y_continuous(limits = c(0, 1))
+ggsave("FYP_pilot_children_2.2_contextExpl_innatenessSwitch.png", width = 5)
+
+# Pilot 2.3 (innateness switch only): essentialism by context and explanation
+ggplot(df.tidy.3 %>% filter(question == "innateness_switch"), aes(x = context, y = response, fill = explanation, color = explanation)) +
+  geom_point(position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8),
+             alpha = 0.8) + 
+  stat_summary(fun.data = "mean_cl_boot",
+               position = position_dodge(width = 0.8),
+               geom = "linerange",
+               size = 1,
+               alpha = 0.5) +
+  stat_summary(fun.y = "mean",
+               position = position_dodge(width = 0.8),
+               geom = "point",
+               shape = 21,
+               color = "black",
+               size = 4) +
+  scale_fill_brewer(palette = "Set1") +
+  scale_y_continuous(limits = c(0, 1))
+ggsave("FYP_pilot_children_2.3_contextExpl_innatenessSwitch.png", width = 5)
+
+# Pilot 2.2 + 2.3 (innateness switch only): essentialism by context and explanation
+ggplot(df.tidy.2.3 %>% filter(question == "innateness_switch"), aes(x = context, y = response, fill = explanation, color = explanation)) +
+  geom_point(position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8),
+             alpha = 0.8) + 
+  stat_summary(fun.data = "mean_cl_boot",
+               position = position_dodge(width = 0.8),
+               geom = "linerange",
+               size = 1,
+               alpha = 0.5) +
+  stat_summary(fun.y = "mean",
+               position = position_dodge(width = 0.8),
+               geom = "point",
+               shape = 21,
+               color = "black",
+               size = 4) +
+  scale_fill_brewer(palette = "Set1") +
+  scale_y_continuous(limits = c(0, 1))
+ggsave("FYP_pilot_children_2.2_2.3_contextExpl_innatenessSwitch.png", width = 5)
+
+# Pilot 2.1 + 2.2 + 2.3 (innateness switch only): essentialism by context and explanation
+ggplot(df.tidy %>% filter(question == "innateness_switch"), aes(x = context, y = response, fill = explanation, color = explanation)) +
+  geom_point(position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8),
+             alpha = 0.8) + 
+  stat_summary(fun.data = "mean_cl_boot",
+               position = position_dodge(width = 0.8),
+               geom = "linerange",
+               size = 1,
+               alpha = 0.5) +
+  stat_summary(fun.y = "mean",
+               position = position_dodge(width = 0.8),
+               geom = "point",
+               shape = 21,
+               color = "black",
+               size = 4) +
+  scale_fill_brewer(palette = "Set1") +
+  scale_y_continuous(limits = c(0, 1))
+ggsave("FYP_pilot_children_2.1_2.2_2.3_contextExpl_innatenessSwitch.png", width = 5)
+
+# Essentialism by explanation over age, faceted by context
+ggplot(df.means_subj.2.3, aes(x = age, y = essentialism, fill = explanation, color = explanation)) +
+  facet_wrap(~ context) +
+  geom_point(alpha = 0.5) + 
+  geom_smooth(method = "lm", se = FALSE) +
+  scale_fill_brewer(palette = "Set1") +
+  scale_y_continuous(limits = c(0, 1))
+
+# Essentialism by context and explanation, faceted by DV
+ggplot(df.tidy.2.3, aes(x = context, y = response, fill = explanation, color = explanation)) +
+  facet_wrap(~ question) +
+  geom_point(alpha = 0.4,
+             position = position_jitterdodge(jitter.width = 0.2, jitter.height = 0.05, dodge.width = 0.4)) + 
+  scale_fill_brewer(palette = "Set1") +
+  scale_y_continuous(limits = c(0, 1))
+ggsave("FYP_pilot_children_2_contextExpl_DV.png")
+```
+
+### Target analysis
+
+The analyses as specified in the analysis plan. 
+
+```{r}
+df.means_subj.2.3 %>% 
+  aov(essentialism ~ 1 + context * explanation, .) %>% 
+  summary()
+```
+
+
+### Exploratory analyses
+```{r}
+
+```
+
+
+
+
+## Discussion
+
+
+
