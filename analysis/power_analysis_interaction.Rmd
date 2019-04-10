@@ -1,0 +1,95 @@
+---
+title: "Power analysis: Linear model with interaction"
+author: "Tobias Gerstenberg"
+date: "4/2/2019"
+output: html_document
+---
+
+# Load packages 
+
+```{r}
+library("broom")
+library("janitor")
+library("tidyverse")
+```
+
+# Power analysis for interaction in linear model
+
+## Set predictions 
+
+```{r}
+# set predicted values based on prior literature
+df.predictions = tibble(
+  context = rep(c("nonstructural", "structural"), each = 2),
+  explanation = rep(c("control", "formal"), 2),
+  mean = c(
+    0.590,
+    0.645,
+    1 - (3.17 - 1) / (4 - 1),
+    1 - (3.17 - 1) / (4 - 1)
+  ),
+  sd = c(
+    # 0.475,
+    # 0.463,
+    0.158,
+    0.187,
+    (0.65 / 3.5) / (4 - 1) * sqrt(24),
+    (0.65 / 3.5) / (4 - 1) * sqrt(24)
+  ),
+  se = sd/sqrt(50)
+)
+```
+
+## Plot predictions 
+
+```{r}
+df.predictions %>% 
+  ggplot(aes(x = context, y = mean, group = explanation, fill = explanation)) +
+  geom_col(position = position_dodge(0.9), color = "black") + 
+  # geom_linerange(aes(ymin = mean - sd, ymax = mean + sd), position = position_dodge(0.9)) + 
+  geom_linerange(aes(ymin = mean - 2*se, ymax = mean + 2*se), position = position_dodge(0.9)) + 
+  theme_minimal()
+```
+
+## Simulate power analysis
+
+```{r}
+# make reproducible 
+set.seed(1)
+
+# parameters 
+alpha = 0.05
+# n_simulations = 100
+n_simulations = 100
+# n = seq(50, 150, 10)
+n = 100
+
+# set up the simulation grid 
+df.pwr = crossing(sample_size = n,
+                  simulation = 1:n_simulations,
+                  alpha = alpha)
+
+df.pwr %>%
+  group_by(simulation, sample_size) %>%
+  mutate(data = list(
+    tibble(
+      structure = rep(c("nonstructural", "structural"), each = sample_size * 2),
+      form = rep(c("control", "formal", "control", "formal"), each = sample_size),
+      response = c(
+        rnorm(sample_size, mean = df.predictions$mean[1], sd = df.predictions$sd[1]),
+        rnorm(sample_size, mean = df.predictions$mean[2], sd = df.predictions$sd[2]),
+        rnorm(sample_size, mean = df.predictions$mean[3], sd = df.predictions$sd[3]),
+        rnorm(sample_size, mean = df.predictions$mean[4], sd = df.predictions$sd[4])
+      )
+    )
+  )) %>% 
+  mutate(fit = map(data, ~ lm(response ~ structure * form, data = .)),
+         coef = map(fit, tidy)) %>% 
+  unnest(coef) %>% 
+  filter(term == "structurestructural:formformal") %>% 
+  group_by(sample_size) %>% 
+  summarize(power = sum(p.value < .05) / n())
+```
+
+
+

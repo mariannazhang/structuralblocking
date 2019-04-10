@@ -1,5 +1,5 @@
 ---
-title: Data analysis for "Essentially blocked - Can structural factors block an essentialist interpretation of a formal explanation?"
+title: Pilot data analysis for "Essentially blocked - Can structural factors block an essentialist interpretation of a formal explanation?"
 author: "Marianna Zhang (marianna.zhang@stanford.edu)"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
@@ -26,48 +26,39 @@ This project's [repository](https://github.com/mariannazhang/structuralblocking)
 
 ## Methods
 
-### Power Analysis
-
-Nadya's estimate: 30-50 per cell?
-
-Muradoglu et al (Exp 2 on gender)
-93 5-6yo
-formal explanation -> all 5 DVs - 0, 1 or 0, 0.5, 1
-> Although the main effect of condition was not significant, p = .11, the condition by age interaction was, p = .044. Six-year-olds, but not 5-year olds, showed higher essentialism for properties introduced via formal explanations (ps = .011 and .999, respectively; see Figure 2). Children also gave more essentialist responses with age, p = .003.
-
-Vasilyeva et al
-41 4-5yo, 48 5-6yo, 67 adults
-structural context -> innateness_switch - 1, 2, 3, 4
-> an ANOVA with framing condition and age group as between-subjects factors revealed the predicted main effect of framing, F(1, 85) = 8.95, p = .004, partial_eta_p_sq = .095, with no main effect of age group, F(1, 85) = 1.05, p = .309, nor interaction, F(1, 85) = .01, p = .984. Similarly, adults rated the target property as more mutable under the structural than nonstructural framing, t(65) = 8.04, p = .001, d = 2.00.
-
-```{r}
-# pwr.t.test(d = cohensD(essentialism ~ context * explanation, data = df.means_subj),
-#            power = 0.8,
-#            sig.level = 0.05)
-```
-
 
 ### Planned Sample
 
 <!-- Planned sample size and/or termination rule, sampling frame, known demographics if any, preselection rules if any.-->
 
-Planned sample size is 5-year-olds and 6-year-olds recruited from a university preschool and museums, as well as adults recruited on Amazon Mechanical Turk. MTurk participants will be required to be located within the United States, and will be required to have a HIT acceptance rate of 80% or above.
+Planned sample size is 5-year-olds and 6-year-olds recruited from a university preschool and museums
+
+<!-- and adults recruited on Amazon Mechanical Turk. MTurk participants will be required to be located within the United States, and will be required to have a HIT acceptance rate of 80% or above. -->
 
 ### Materials
 
 
 
 ### Procedure	
+2x2 design
+* Context - nonstructural context, or structural context
+* Explanation - control explanation, or formal explanation
 
+Essentialism DVs
+* Pilot 1 (n=14) - 5 canonical essentialism DVs (like in Muradoglu et al, other studies): stability_past, stability_future, innateness_stop, inductive_potential, innateness_switch. But there's a worry that these items are not specific to essentialism, and a structural conception of gender may at times yield what appears to be an essentialist answer to these DVs.
+* Pilot 2.1 (n=4, all structural) - testing new set of 4 DVs: fc_expl_group, inductivePoten, normative_indiv, innateness_switch
+* Pilot 2.2 (n=9) - changes in group vs individual level, fc_expl in order to make it flow better as the first item from the previous narration, normative because we're interested in group level normativity: fc_expl_indiv, inductivePoten, normative_group, innateness_switch
+* Pilot 2.3 (n=7) - minor changes, fc_expl_indiv now mentions "size of the buckets", inductivePoten is now 4 point response instead of 2 point response: fc_expl_indiv_size, inductivePoten, normative_group, innateness_switch
 
+* Final design - kick out normativity from essentialism composite measure, because normativity is not a core feature of essentialism, explore separately as follow-up. fc_expl_indiv_size, inductivePoten, innateness_switch as essentialism measures. normative_group as follow-up. 
 
-The adult survey paradigm can be found on Qualtrics. 
+<!-- The adult survey paradigm can be found on Qualtrics.  -->
+
 
 ### Analysis Plan
 
 <!-- data cleaning rules, data exclusion rules, covariates, etc. Key analysis of interest. Can also pre-specify additional analyses you plan to do.-->
 
-Essentialism measure for each participant calculated as average of all 5 essentialism measures.
 
 #### Exclusion criteria
 Experimentor error, out of age range. 
@@ -75,17 +66,17 @@ Experimentor error, out of age range.
 #### Analysis of interest
 ANOVA on essentialism measure with an interaction term for context and explanation. 
 
+We predict an interaction between context and explanation, such that in the nonstructural condition, hearing a formal explanation relative to a control explanation increases essentialism, but in the structural condition, hearing a formal explanation relative to a control explanation does not increase or increases essentialism to a lesser extent than in the nonstructural condition. In other words, the formal explanation may be interpreted structurally, and an essentialist reading blocked in the structural condition. 
 
 
 
-
-### Methods Addendum (Post Data Collection)
-#### Actual Sample
-<!-- actual sample size, actual power, exclusions, demographics --> 
-
+<!-- ### Methods Addendum (Post Data Collection) -->
+<!-- #### Actual Sample -->
+<!-- <!-- actual sample size, actual power, exclusions, demographics -->  -->
 
 
-#### Differences from pre-data collection methods plan
+
+<!-- #### Differences from pre-data collection methods plan -->
 
 
 
@@ -106,7 +97,8 @@ require("knitr")
 ```{r}
 #### Load relevant libraries and functions
 library(tidyverse)
-
+library(broom)
+library(paramtest) # power analysis
 
 #### Import data for analysis
 df.data <- read_csv("../data/FYP_data_pilot_children_2.csv")
@@ -189,7 +181,7 @@ df.data$inductivePoten <-
   if_else(df.data$cb == "girlsYellow", 
           (recode(df.data$inductivePoten,
                   "Green-Ball" = 1/6,
-                  "Yellow-Ball" = 5/6,
+                  "Yellow-Ball" = 5/6, # conservatively estimate as midway between maybe and for sure
                   "For sure Green-Ball" = 0,
                   "Maybe Green-Ball" = 1/3,
                   "Maybe Yellow-Ball" = 2/3,
@@ -241,6 +233,7 @@ df.tidy.2.3 <- df.tidy %>%
 df.means_subj <- df.tidy %>% 
   group_by(subject, age, context, explanation, dvs) %>% 
   summarize(essentialism = mean(response, na.rm = TRUE))
+
 df.means_subj.1 <- df.tidy.1 %>% 
   group_by(subject, age, context, explanation, dvs) %>% 
   summarize(essentialism = mean(response, na.rm = TRUE))
@@ -250,13 +243,38 @@ df.means_subj.2 <- df.tidy.2 %>%
 df.means_subj.3 <- df.tidy.3 %>% 
   group_by(subject, age, context, explanation, dvs) %>% 
   summarize(essentialism = mean(response, na.rm = TRUE))
+
 df.means_subj.2.3 <- df.tidy.2.3 %>% 
   group_by(subject, age, context, explanation, dvs) %>% 
   summarize(essentialism = mean(response, na.rm = TRUE))
 
+
+
+df.means_subj.noNormative <- df.tidy %>% 
+  filter(!str_detect(question, "normative")) %>% 
+  group_by(subject, age, context, explanation, dvs) %>% 
+  summarize(essentialism = mean(response, na.rm = TRUE))
+
+df.means_subj.1.noNormative <- df.tidy.1 %>% 
+  filter(!str_detect(question, "normative")) %>% 
+  group_by(subject, age, context, explanation, dvs) %>% 
+  summarize(essentialism = mean(response, na.rm = TRUE))
+df.means_subj.2.noNormative <- df.tidy.2 %>% 
+  filter(!str_detect(question, "normative")) %>% 
+  group_by(subject, age, context, explanation, dvs) %>% 
+  summarize(essentialism = mean(response, na.rm = TRUE))
+df.means_subj.3.noNormative <- df.tidy.3 %>% 
+  filter(!str_detect(question, "normative")) %>% 
+  group_by(subject, age, context, explanation, dvs) %>% 
+  summarize(essentialism = mean(response, na.rm = TRUE))
+
+df.means_subj.2.3.noNormative <- df.tidy.2.3 %>% 
+  filter(!str_detect(question, "normative")) %>% 
+  group_by(subject, age, context, explanation, dvs) %>% 
+  summarize(essentialism = mean(response, na.rm = TRUE))
 ```
 
-### Preliminary look at data and visualization
+### Exploring the pilot 2 data
 ```{r}
 # Overall essentialism measure across subjects by condition
 df.means <- df.tidy %>%
@@ -287,13 +305,6 @@ df.means.3 <- df.tidy.3 %>%
             n = length(unique(subject)))
 df.means.3
 
-df.means.2.3 <- df.tidy.2.3 %>%
-  group_by(context, explanation) %>% 
-  summarize(essentialism = mean(response, na.rm = TRUE),
-            sd = sd(response, na.rm = TRUE), 
-            n = length(unique(subject)))
-df.means.2.3
-
 ```
 
 ```{r}
@@ -304,7 +315,7 @@ theme_set(
 )
 ```
 
-```{r}
+```{r vis-all}
 # Pilot 2.1: essentialism by context and explanation
 ggplot(df.means_subj.1, aes(x = context, y = essentialism, fill = explanation, color = explanation)) +
   geom_point(position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8),
@@ -362,6 +373,7 @@ ggplot(df.means_subj.3, aes(x = context, y = essentialism, fill = explanation, c
   scale_y_continuous(limits = c(0, 1))
 ggsave("FYP_pilot_children_2.3_contextExpl.png", width = 5)
 
+
 # Pilot 2.2 + 2.3: essentialism by context and explanation
 ggplot(df.means_subj.2.3, aes(x = context, y = essentialism, fill = explanation, color = explanation)) +
   geom_point(position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8),
@@ -381,6 +393,28 @@ ggplot(df.means_subj.2.3, aes(x = context, y = essentialism, fill = explanation,
   scale_y_continuous(limits = c(0, 1))
 ggsave("FYP_pilot_children_2.2_2.3_contextExpl.png", width = 5)
 
+
+# Pilot 2.1 + 2.2 + 2.3: essentialism by context and explanation
+ggplot(df.means_subj, aes(x = context, y = essentialism, fill = explanation, color = explanation)) +
+  geom_point(position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8),
+             alpha = 0.8) + 
+  stat_summary(fun.data = "mean_cl_boot",
+               position = position_dodge(width = 0.8),
+               geom = "linerange",
+               size = 1,
+               alpha = 0.5) +
+  stat_summary(fun.y = "mean",
+               position = position_dodge(width = 0.8),
+               geom = "point",
+               shape = 21,
+               color = "black",
+               size = 4) +
+  scale_fill_brewer(palette = "Set1") +
+  scale_y_continuous(limits = c(0, 1))
+ggsave("FYP_pilot_children_2.1_2.2_2.3_contextExpl.png", width = 5)
+```
+
+```{r vis-innateness-switch}
 # Pilot 2.1 (innateness switch only): essentialism by context and explanation
 ggplot(df.tidy.1 %>% filter(question == "innateness_switch"), aes(x = context, y = response, fill = explanation, color = explanation)) +
   geom_point(position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8),
@@ -438,6 +472,7 @@ ggplot(df.tidy.3 %>% filter(question == "innateness_switch"), aes(x = context, y
   scale_y_continuous(limits = c(0, 1))
 ggsave("FYP_pilot_children_2.3_contextExpl_innatenessSwitch.png", width = 5)
 
+
 # Pilot 2.2 + 2.3 (innateness switch only): essentialism by context and explanation
 ggplot(df.tidy.2.3 %>% filter(question == "innateness_switch"), aes(x = context, y = response, fill = explanation, color = explanation)) +
   geom_point(position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8),
@@ -457,6 +492,7 @@ ggplot(df.tidy.2.3 %>% filter(question == "innateness_switch"), aes(x = context,
   scale_y_continuous(limits = c(0, 1))
 ggsave("FYP_pilot_children_2.2_2.3_contextExpl_innatenessSwitch.png", width = 5)
 
+
 # Pilot 2.1 + 2.2 + 2.3 (innateness switch only): essentialism by context and explanation
 ggplot(df.tidy %>% filter(question == "innateness_switch"), aes(x = context, y = response, fill = explanation, color = explanation)) +
   geom_point(position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8),
@@ -475,7 +511,110 @@ ggplot(df.tidy %>% filter(question == "innateness_switch"), aes(x = context, y =
   scale_fill_brewer(palette = "Set1") +
   scale_y_continuous(limits = c(0, 1))
 ggsave("FYP_pilot_children_2.1_2.2_2.3_contextExpl_innatenessSwitch.png", width = 5)
+```
 
+
+```{r vis-no-normative}
+# Pilot 2.1 (no normative): essentialism by context and explanation
+ggplot(df.means_subj.1.noNormative, aes(x = context, y = essentialism, fill = explanation, color = explanation)) +
+  geom_point(position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8),
+             alpha = 0.8) + 
+  stat_summary(fun.data = "mean_cl_boot",
+               position = position_dodge(width = 0.8),
+               geom = "linerange",
+               size = 1,
+               alpha = 0.5) +
+  stat_summary(fun.y = "mean",
+               position = position_dodge(width = 0.8),
+               geom = "point",
+               shape = 21,
+               color = "black",
+               size = 4) +
+  scale_fill_brewer(palette = "Set1") +
+  scale_y_continuous(limits = c(0, 1))
+ggsave("FYP_pilot_children_2.1_contextExpl_noNormative.png", width = 5)
+
+# Pilot 2.2 (no normative): essentialism by context and explanation
+ggplot(df.means_subj.2.noNormative, aes(x = context, y = essentialism, fill = explanation, color = explanation)) +
+  geom_point(position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8),
+             alpha = 0.8) + 
+  stat_summary(fun.data = "mean_cl_boot",
+               position = position_dodge(width = 0.8),
+               geom = "linerange",
+               size = 1,
+               alpha = 0.5) +
+  stat_summary(fun.y = "mean",
+               position = position_dodge(width = 0.8),
+               geom = "point",
+               shape = 21,
+               color = "black",
+               size = 4) +
+  scale_fill_brewer(palette = "Set1") +
+  scale_y_continuous(limits = c(0, 1))
+ggsave("FYP_pilot_children_2.2_contextExpl_noNormative.png", width = 5)
+
+# Pilot 2.3 (no normative): essentialism by context and explanation
+ggplot(df.means_subj.3.noNormative, aes(x = context, y = essentialism, fill = explanation, color = explanation)) +
+  geom_point(position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8),
+             alpha = 0.8) + 
+  stat_summary(fun.data = "mean_cl_boot",
+               position = position_dodge(width = 0.8),
+               geom = "linerange",
+               size = 1,
+               alpha = 0.5) +
+  stat_summary(fun.y = "mean",
+               position = position_dodge(width = 0.8),
+               geom = "point",
+               shape = 21,
+               color = "black",
+               size = 4) +
+  scale_fill_brewer(palette = "Set1") +
+  scale_y_continuous(limits = c(0, 1))
+ggsave("FYP_pilot_children_2.3_contextExpl_noNormative.png", width = 5)
+
+
+# Pilot 2.2 + 2.3 (no normative): essentialism by context and explanation
+ggplot(df.means_subj.2.3.noNormative, aes(x = context, y = essentialism, fill = explanation, color = explanation)) +
+  geom_point(position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8),
+             alpha = 0.8) + 
+  stat_summary(fun.data = "mean_cl_boot",
+               position = position_dodge(width = 0.8),
+               geom = "linerange",
+               size = 1,
+               alpha = 0.5) +
+  stat_summary(fun.y = "mean",
+               position = position_dodge(width = 0.8),
+               geom = "point",
+               shape = 21,
+               color = "black",
+               size = 4) +
+  scale_fill_brewer(palette = "Set1") +
+  scale_y_continuous(limits = c(0, 1))
+ggsave("FYP_pilot_children_2.2_2.3_contextExpl_noNormative.png", width = 5)
+
+
+# Pilot 2.1 + 2.2 + 2.3 (no normative): essentialism by context and explanation
+ggplot(df.means_subj.noNormative, aes(x = context, y = essentialism, fill = explanation, color = explanation)) +
+  geom_point(position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8),
+             alpha = 0.8) + 
+  stat_summary(fun.data = "mean_cl_boot",
+               position = position_dodge(width = 0.8),
+               geom = "linerange",
+               size = 1,
+               alpha = 0.5) +
+  stat_summary(fun.y = "mean",
+               position = position_dodge(width = 0.8),
+               geom = "point",
+               shape = 21,
+               color = "black",
+               size = 4) +
+  scale_fill_brewer(palette = "Set1") +
+  scale_y_continuous(limits = c(0, 1))
+ggsave("FYP_pilot_children_2.1_2.2_2.3_contextExpl_noNormative.png", width = 5)
+```
+
+
+```{r vis-age-dv}
 # Essentialism by explanation over age, faceted by context
 ggplot(df.means_subj.2.3, aes(x = age, y = essentialism, fill = explanation, color = explanation)) +
   facet_wrap(~ context) +
@@ -499,18 +638,123 @@ ggsave("FYP_pilot_children_2_contextExpl_DV.png")
 The analyses as specified in the analysis plan. 
 
 ```{r}
-df.means_subj.2.3 %>% 
-  aov(essentialism ~ 1 + context * explanation, .) %>% 
-  summary()
+# contextExpl.2.3 <- df.means_subj.2.3 %>% 
+#   aov(essentialism ~ 1 + context * explanation, .) %>% 
+#   tidy()
 ```
 
 
-### Exploratory analyses
-```{r}
+## Power Analysis
+### Power Analysis based on simulation from prior studies
+Nadya's estimate is 30 to 50 per cell, so n = `r 30*4` to `50*4` total.
 
+Muradoglu et al 2019 (Exp 2 on gender) ran 93 5-6yo in either a formal explanation or control explanation condition (both basically nonstructural), and measured essentialism using 5 essentialism DVs (stability_past, stability_future, innateness_stop, innateness_switch as 0 to 1, and inductive_potential as 0, 0.5, or 1, with greater being more essentialist).
+
+> Although the main effect of condition was not significant, p = .11, the condition by age interaction was, p = .044. Six-year-olds, but not 5-year olds, showed higher essentialism for properties introduced via formal explanations (ps = .011 and .999, respectively; see Figure 2). Children also gave more essentialist responses with age, p = .003.
+
+![Muradoglu et al 2019 Exp 2 explanation on essentialism results](MuradogluEtAl2019_Exp2_explanation.png)
+
+Vasilyeva et al 2018 ran 48 5-6yo (also some 4-5 and adults) in either a structural context or nonstructural context (both basically without giving an explanation), and measured essentialism using 1 essentialism DV (innateness_switch, which they call mutability, coded as 1, 2, 3, 4, with greater being less essentialist). 
+
+> an ANOVA with framing condition and age group as between-subjects factors revealed the predicted main effect of framing, F(1, 85) = 8.95, p = .004, partial_eta_p_sq = .095, with no main effect of age group, F(1, 85) = 1.05, p = .309, nor interaction, F(1, 85) = .01, p = .984. Similarly, adults rated the target property as more mutable under the structural than nonstructural framing, t(65) = 8.04, p = .001, d = 2.00.
+
+![Vasilyeva et al 2019 context on mutability results](VasilyevaEtAl_2019_context_mutability.png)
+
+```{r power-analysis-kids-prev-1}
+# make reproducible
+set.seed(1)
+
+
+# set predicted values per item
+df.predicted.item <- tibble(
+  context = rep(c("nonstructural", "structural"), each = 8),
+  explanation = rep(c("control", "formal"), length.out = 16, each = 4),
+  question = rep(c("fc_expl_indiv_size", "inductivePoten", "normative_group", "innateness_switch"), length.out = 16, each = 1),
+  response = rep(c(0.590,
+                   0.645,
+                   1-(3.1667-1)/(4-1),
+                   1-(3.1667-1)/(4-1)), length.out = 16, each = 4),
+  sd = rep(c((0.16667)/(4-1)*sqrt(24),
+             (0.16667)/(4-1)*sqrt(24),
+             (0.16667)/(4-1)*sqrt(24),
+             (0.16667)/(4-1)*sqrt(24)), length.out = 16, each = 1)
+)
+
+
+
+
+# set predicted values based on prior literature
+df.predicted <- tibble(
+  context = rep(c("nonstructural", "structural"), each = 2),
+  explanation = rep(c("control", "formal"), 2),
+  
+  # means
+  essentialism = c(0.590, # nonstructural control ~ Muradoglu et al control condition (exact mean from data), also Vasilyeva et al structural condition (2.5417 out of 1 to 4 reversed scale = 1-(2.5417-1)/(4-1) = 0.49)
+                   0.645, # nonstructural formal ~ Muradoglu et al formal condition (exact mean from data)
+                   1-(3.1667-1)/(4-1), # structural control ~ Vasilyeva et al structural condition (3.1667 out of 1 to 4 reversed scale = 1-(3.1667-1)/(4-1) = 0.28)
+                   1-(3.1667-1)/(4-1)), # structural formal ~ we predict to be the same as structural control = 0.28
+  
+  sd = c(0.158, # nonstructural control ~ Muradoglu et al control condition (exact SD from data), also Vasilyeva et al structural condition = (0.21685)/(4-1) = (SD = SE * sqrt(n))
+         0.187, # nonstructural formal ~ Muradoglu et al formal condition (exact SD from data)
+         0.17,
+         0.17),
+         # (0.16667)/(4-1)*sqrt(24), # structural control ~ Vasilyeva et al structural condition (SD = SE * sqrt(n))
+         # (0.16667)/(4-1)*sqrt(24))
+  
+  se = c(0.023,
+         0.028,
+         0.026,
+         0.026)
+         # 0.056,
+         # 0.056)
+)
+
+# plot predictions
+df.predicted %>% 
+  ggplot(aes(x = context, y = essentialism, group = explanation, fill = explanation)) +
+  geom_col(position = position_dodge(0.9), color = "black") + 
+  geom_linerange(aes(ymin = essentialism - se, ymax = essentialism + se), position = position_dodge(0.9)) +
+  scale_y_continuous(limits = c(0, 1))
 ```
 
+```{r power-analysis-kids-prev-2}
+# set parameters 
+alpha = 0.05
+n_simulations = 100
+n = seq(100, 220, 20)
 
+# set up the simulation grid 
+df.pwr = crossing(sample_size = n,
+                  simulation = 1:n_simulations,
+                  alpha = alpha)
+
+df.pwr <- df.pwr %>%
+  group_by(simulation, sample_size) %>%
+  mutate(data = list(
+    tibble(
+      context = rep(c("nonstructural", "structural"), each = sample_size * 2),
+      explanation = rep(c("control", "formal", "control", "formal"), each = sample_size),
+      essentialism = c(
+        rnorm(sample_size, mean = df.predicted$essentialism[1], sd = df.predicted$sd[1]),
+        rnorm(sample_size, mean = df.predicted$essentialism[2], sd = df.predicted$sd[2]),
+        rnorm(sample_size, mean = df.predicted$essentialism[3], sd = df.predicted$sd[3]),
+        rnorm(sample_size, mean = df.predicted$essentialism[4], sd = df.predicted$sd[4])
+      )
+    )
+  )) %>% 
+  mutate(fit = map(data, ~ lm(essentialism ~ context * explanation, data = .)),
+         coef = map(fit, tidy)) %>% 
+  unnest(coef) %>% 
+  filter(term == "contextstructural:explanationformal") %>% 
+  group_by(sample_size) %>% 
+  summarize(power = sum(p.value < .05) / n())
+
+ggplot(df.pwr, aes(x = sample_size, y = power)) +
+  geom_line() +
+  geom_line(y = 0.8, linetype = "dashed") +
+  scale_y_continuous(limits = c(0, 1))
+
+```
 
 
 ## Discussion
