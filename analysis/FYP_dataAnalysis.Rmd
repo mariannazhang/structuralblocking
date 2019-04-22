@@ -51,7 +51,7 @@ Vasilyeva et al 2018 provides an excellent structural versus nonstructural parad
 
 This study adapts the structural versus nonstructural paradigm from Vasilyeva et al 2018 and the formal explanation versus control statement paradigm from Muradoglu et al submitted in order to address whether structural situations can block the essentialism that would typically result from hearing a formal explanation. In this study, 5 and 6-year-olds will be introduced to the same gender-segregated classroom paradigm as from Vasilyeva et al 2018, hear a formal explanation (e.g. "Suzy plays Yellow-Ball because she is a girl") or control statement adapted from Muradoglu et al to the gender-segregated paradigm, and then will complete a mutability task as a measure of essentialism. If structural situations do block the essentialist effects of a formal explanation, there should be an interaction between situation and explanation, such that formal explanations relative to the control statement should boost essentialism (i.e. depress mutability) in the nonstructural condition, but that boost should be reduced or eliminated in the structural condition. If structural situations fail to block the essentialist effects of a formal explanation, there should only be a main effect of explanation, such that formal explanations relative to the control statement boost essentialism (i.e. depress mutability) in both structural and nonstructural conditions. 
 
-This project's [repository](https://github.com/mariannazhang/structuralblocking) and preregistration can be found online. 
+This project's [repository](https://github.com/mariannazhang/structuralblocking) and [preregistration](https://osf.io/7ja86/) can be found online. 
 
 
 ## Methods
