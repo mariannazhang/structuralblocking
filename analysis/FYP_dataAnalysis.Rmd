@@ -104,11 +104,16 @@ df.predicted <- tibble(
 )
 
 # plot predictions
-df.predicted %>% 
-  ggplot(aes(x = context, y = essentialism, group = explanation, fill = explanation)) +
-  geom_col(position = position_dodge(0.9), color = "black") + 
-  geom_linerange(aes(ymin = essentialism - se, ymax = essentialism + se), position = position_dodge(0.9)) +
+ggplot(df.predicted, aes(x = context, y = essentialism, fill = explanation, color = explanation)) +
+  stat_summary(fun.y = "mean",
+               position = position_dodge(width = 0.8),
+               geom = "point",
+               shape = 21,
+               color = "black",
+               size = 4) +
+  scale_fill_brewer(palette = "Set1") +
   scale_y_continuous(limits = c(0, 1))
+ggsave("FYP_predicted.png", width = 6.25)
 ```
 
 ```{r power-analysis-kids-2}
@@ -190,13 +195,14 @@ We predict an interaction between context and explanation, such that in the nons
 
 
 
-<!-- ### Methods Addendum (Post Data Collection) -->
-<!-- #### Actual Sample -->
-<!-- <!-- actual sample size, actual power, exclusions, demographics -->  -->
+### Methods Addendum (Post Data Collection)
+#### Actual Sample
+<!-- actual sample size, actual power, exclusions, demographics -->
+
+We ran n=200 adults, aiming to retain the target sample size of n=184 after exclusion criteria. After exclusion criteria, we retained n=`r n.adults`.
 
 
-
-<!-- #### Differences from pre-data collection methods plan -->
+#### Differences from pre-data collection methods plan
 
 
 
@@ -263,6 +269,10 @@ df.data.adults$check_attn <- df.data.adults$check_attn %>%
 # Convert gender to lowercase to match kids dataframe
 df.data.adults$gender <- df.data.adults$gender %>% 
   str_to_lower()
+
+# Convert age to number
+df.data.adults$age <- df.data.adults$age %>% 
+  as.numeric()
 ```
 
 ```{r kids-clean}
@@ -275,10 +285,11 @@ df.data.children <- df.data.children %>%
 ```{r exclusion}
 #### Data exclusion / filtering
 # Record exclusions: experimentor error, age
-df.excl.children <- df.data.children %>% 
-  summarize(exp_error = sum(exp_error == "yes"),
-            interference = sum(interference == "yes"),
-            insuff_lang = sum(insuff_lang == "yes"))
+df.excl.children <- df.data.children %>%
+  summarize(atypical = sum(atypical == "yes"),
+            insuff_lang = sum(insuff_lang == "yes"),
+            exp_error = sum(exp_error == "yes"),
+            interference = sum(interference == "yes"))
   
 df.excl.adults <- df.data.adults %>% 
   summarize(check_game = sum(check_game == "No"),
@@ -287,16 +298,22 @@ df.excl.adults <- df.data.adults %>%
 
 # Exclude subjects and remove exclusion columns
 df.data.children <- df.data.children %>%
-  filter(exp_error == "no" & 
-           interference == "no" &
-           insuff_lang == "no") %>%
-  select(-exp_error, -interference, -insuff_lang) 
+  filter(atypical == "no",
+         insuff_lang == "no",
+         exp_error == "no",
+         interference == "no") %>%
+  select(-atypical, -insuff_lang, -exp_error, -interference)
 
 df.data.adults <- df.data.adults %>% 
   filter(check_game == "Yes" & 
            check_attn == "For sure Yellow-Ball") %>% 
   select(-check_attn)
   
+```
+
+```{r sample-size}
+n.adults <- nrow(df.data.adults)
+n.children <- nrow(df.data.children)
 ```
 
 ```{r combine-data}
@@ -314,6 +331,8 @@ df.data <- df.data %>%
   mutate(age_group = case_when(
     age < 7 ~ "child",
     age >= 18 ~ "adult"))
+df.data$age_group <- df.data$age_group %>% 
+  factor(levels=c('child', 'adult'))
 
 # Age
 df.dem_age <- df.data %>%
@@ -405,12 +424,19 @@ df.subj.adults <- df.tidy %>%
 ### Descriptive analysis
 ```{r}
 # Overall essentialism measure across subjects by condition
-df.means <- df.subj %>%
-  group_by(age_group, context, explanation) %>% 
-  summarize(essentialism = mean(essentialism, na.rm = TRUE),
-            sd = sd(response, na.rm = TRUE), 
+df.means.adults <- df.subj.adults %>%
+  group_by(context, explanation) %>% 
+  summarize(avg = mean(essentialism, na.rm = TRUE),
+            sd = sd(essentialism, na.rm = TRUE), 
             n = length(unique(subject)))
-df.means
+df.means.adults
+
+df.means.children <- df.subj.children %>%
+  group_by(context, explanation) %>% 
+  summarize(avg = mean(essentialism, na.rm = TRUE),
+            sd = sd(essentialism, na.rm = TRUE), 
+            n = length(unique(subject)))
+df.means.children
 ```
 
 ```{r}
@@ -424,14 +450,13 @@ theme_set(
 ```{r vis-all}
 # essentialism by context and explanation, facet by age_group
 ggplot(df.subj, aes(x = context, y = essentialism, fill = explanation, color = explanation)) +
-  facet_wrap(age_group) +
+  facet_wrap(vars(age_group)) +
   geom_point(position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8),
-             alpha = 0.8) + 
+             alpha = 0.3) + 
   stat_summary(fun.data = "mean_cl_boot",
                position = position_dodge(width = 0.8),
                geom = "linerange",
-               size = 1,
-               alpha = 0.5) +
+               size = 1) +
   stat_summary(fun.y = "mean",
                position = position_dodge(width = 0.8),
                geom = "point",
@@ -440,7 +465,7 @@ ggplot(df.subj, aes(x = context, y = essentialism, fill = explanation, color = e
                size = 4) +
   scale_fill_brewer(palette = "Set1") +
   scale_y_continuous(limits = c(0, 1))
-ggsave("FYP_contextExpl.png", width = 5)
+ggsave("FYP_contextExpl.png", width = 10)
 ```
 
 ### Target analysis
@@ -448,18 +473,33 @@ ggsave("FYP_contextExpl.png", width = 5)
 The analyses as specified in the analysis plan. 
 
 ```{r anova}
-fit.compact <- lm(essentialism ~ 1 + context + explanation, data = df.subj.children)
-fit.aug <- lm(essentialism ~ 1 + context * explanation, data = df.subj.children)
-contextExplInt.children <- anova(fit.compact, fit.aug)
+# fit.compact <- lm(essentialism ~ 1 + context + explanation, data = df.subj.children)
+# fit.aug <- lm(essentialism ~ 1 + context * explanation, data = df.subj.children)
+# contextExplInt.children <- anova(fit.compact, fit.aug)
 
-fit.compact <- lm(essentialism ~ 1 + context + explanation, data = df.subj.adults)
-fit.aug <- lm(essentialism ~ 1 + context * explanation, data = df.subj.adults)
-contextExplInt.adults <- anova(fit.compact, fit.aug)
+aov(essentialism ~ 1 + context * explanation, data = df.subj.adults) %>% 
+  summary()
 ```
 
 ### Exploratory analysis
 ```{r normative}
-
+# response by context and explanation, facet by DV
+ggplot(df.tidy %>%  filter(age_group == "child"), aes(x = context, y = response, fill = explanation, color = explanation)) +
+  facet_wrap(vars(question)) +
+  geom_point(position = position_jitterdodge(jitter.width = 0.2, jitter.height = 0.02, dodge.width = 0.8),
+             alpha = 0.3) + 
+  stat_summary(fun.data = "mean_cl_boot",
+               position = position_dodge(width = 0.8),
+               geom = "linerange",
+               size = 1) +
+  stat_summary(fun.y = "mean",
+               position = position_dodge(width = 0.8),
+               geom = "point",
+               shape = 21,
+               color = "black",
+               size = 4) +
+  scale_fill_brewer(palette = "Set1") +
+  scale_y_continuous(limits = c(0, 1))
 
 ```
 
