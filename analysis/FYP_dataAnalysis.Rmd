@@ -450,7 +450,7 @@ theme_set(
 ```{r vis-all}
 # essentialism by context and explanation, facet by age_group
 ggplot(df.subj, aes(x = context, y = essentialism, fill = explanation, color = explanation)) +
-  facet_wrap(vars(age_group)) +
+  facet_wrap(vars(age_cat)) +
   geom_point(position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8),
              alpha = 0.3) + 
   stat_summary(fun.data = "mean_cl_boot",
@@ -466,6 +466,12 @@ ggplot(df.subj, aes(x = context, y = essentialism, fill = explanation, color = e
   scale_fill_brewer(palette = "Set1") +
   scale_y_continuous(limits = c(0, 1))
 ggsave("FYP_contextExpl.png", width = 10)
+
+
+ggplot(df.subj %>% filter(age_group == "adult", context == "structural")) +
+  facet_wrap(vars(explanation)) +
+  geom_histogram(aes(x = essentialism)) +
+  coord_flip()
 ```
 
 ### Target analysis
@@ -482,8 +488,68 @@ aov(essentialism ~ 1 + context * explanation, data = df.subj.adults) %>%
 ```
 
 ### Exploratory analysis
+```{r DVs}
+# DVs by context and explanation
+ggplot(df.tidy %>%  filter(age_group == "adult"), aes(x = context, y = response, fill = explanation, color = explanation)) +
+  facet_wrap(vars(question)) +
+  geom_point(position = position_jitterdodge(jitter.width = 0.2, jitter.height = 0.02, dodge.width = 0.8),
+             alpha = 0.3) + 
+  stat_summary(fun.data = "mean_cl_boot",
+               position = position_dodge(width = 0.8),
+               geom = "linerange",
+               size = 1) +
+  stat_summary(fun.y = "mean",
+               position = position_dodge(width = 0.8),
+               geom = "point",
+               shape = 21,
+               color = "black",
+               size = 4) +
+  scale_fill_brewer(palette = "Set1") +
+  scale_y_continuous(limits = c(0, 1))
+ggsave("FYP_contextExpl_DV_adult.png", width = 10)
+```
+
 ```{r normative}
-# response by context and explanation, facet by DV
+# Normative by context and explanation
+ggplot(df.tidy %>%  filter(question == "normative_group"), aes(x = context, y = response, fill = explanation, color = explanation)) +
+  facet_wrap(vars(age_group)) +
+  geom_point(position = position_jitterdodge(jitter.width = 0.2, jitter.height = 0.02, dodge.width = 0.8),
+             alpha = 0.3) + 
+  stat_summary(fun.data = "mean_cl_boot",
+               position = position_dodge(width = 0.8),
+               geom = "linerange",
+               size = 1) +
+  stat_summary(fun.y = "mean",
+               position = position_dodge(width = 0.8),
+               geom = "point",
+               shape = 21,
+               color = "black",
+               size = 4) +
+  scale_fill_brewer(palette = "Set1") +
+  scale_y_continuous(limits = c(0, 1))
+ggsave("FYP_contextExpl_normative.png", width = 10)
+
+
+# Normative by context and explanation (adults)
+ggplot(df.tidy %>%  filter(age_group == "adult", question == "normative_group"), aes(x = context, y = response, fill = explanation, color = explanation)) +
+  geom_point(position = position_jitterdodge(jitter.width = 0.2, jitter.height = 0.02, dodge.width = 0.8),
+             alpha = 0.3) + 
+  stat_summary(fun.data = "mean_cl_boot",
+               position = position_dodge(width = 0.8),
+               geom = "linerange",
+               size = 1) +
+  stat_summary(fun.y = "mean",
+               position = position_dodge(width = 0.8),
+               geom = "point",
+               shape = 21,
+               color = "black",
+               size = 4) +
+  scale_fill_brewer(palette = "Set1") +
+  scale_y_continuous(limits = c(0, 1))
+ggsave("FYP_contextExpl_normative_adult.png", width = 10)
+
+
+# Normative by context and explanation (child)
 ggplot(df.tidy %>%  filter(age_group == "child"), aes(x = context, y = response, fill = explanation, color = explanation)) +
   facet_wrap(vars(question)) +
   geom_point(position = position_jitterdodge(jitter.width = 0.2, jitter.height = 0.02, dodge.width = 0.8),
@@ -500,9 +566,29 @@ ggplot(df.tidy %>%  filter(age_group == "child"), aes(x = context, y = response,
                size = 4) +
   scale_fill_brewer(palette = "Set1") +
   scale_y_continuous(limits = c(0, 1))
-
+ggsave("FYP_contextExpl_DV_child.png", width = 10)
 ```
 
+```{r innateness_switch}
+# Innateness switch by context and explanation
+ggplot(df.tidy %>%  filter(question == "innateness_switch"), aes(x = context, y = response, fill = explanation, color = explanation)) +
+  facet_wrap(vars(age_group)) +
+  geom_point(position = position_jitterdodge(jitter.width = 0.2, jitter.height = 0.02, dodge.width = 0.8),
+             alpha = 0.3) + 
+  stat_summary(fun.data = "mean_cl_boot",
+               position = position_dodge(width = 0.8),
+               geom = "linerange",
+               size = 1) +
+  stat_summary(fun.y = "mean",
+               position = position_dodge(width = 0.8),
+               geom = "point",
+               shape = 21,
+               color = "black",
+               size = 4) +
+  scale_fill_brewer(palette = "Set1") +
+  scale_y_continuous(limits = c(0, 1))
+ggsave("FYP_contextExpl_innateness_switch.png", width = 10)
+```
 
 ## Discussion
 
