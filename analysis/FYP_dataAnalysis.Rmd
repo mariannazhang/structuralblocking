@@ -405,19 +405,19 @@ df.tidy$question <- df.tidy$question %>%
 # Calculate overall essentialism measure per subject
 df.subj <- df.tidy %>% 
   filter(!str_detect(question, "normative")) %>% 
-  group_by(subject, age, age_cat, age_group, context, explanation) %>% 
+  group_by(subject, age, age_cat, age_group, gender, context, explanation) %>% 
   summarize(essentialism = mean(response, na.rm = TRUE))
 
 df.subj.children <- df.tidy %>% 
   filter(!str_detect(question, "normative")) %>% 
   filter(age_group == "child") %>% 
-  group_by(subject, age, age_cat, context, explanation) %>% 
+  group_by(subject, age, age_cat, gender, context, explanation) %>% 
   summarize(essentialism = mean(response, na.rm = TRUE))
 
 df.subj.adults <- df.tidy %>% 
   filter(!str_detect(question, "normative")) %>% 
   filter(age_group == "adult") %>% 
-  group_by(subject, context, explanation) %>% 
+  group_by(subject, context, gender, explanation) %>% 
   summarize(essentialism = mean(response, na.rm = TRUE))
 ```
 
@@ -450,7 +450,7 @@ theme_set(
 ```{r vis-all}
 # essentialism by context and explanation, facet by age_group
 ggplot(df.subj, aes(x = context, y = essentialism, fill = explanation, color = explanation)) +
-  facet_wrap(vars(age_cat)) +
+  facet_wrap(vars(age_group)) +
   geom_point(position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8),
              alpha = 0.3) + 
   stat_summary(fun.data = "mean_cl_boot",
@@ -467,11 +467,6 @@ ggplot(df.subj, aes(x = context, y = essentialism, fill = explanation, color = e
   scale_y_continuous(limits = c(0, 1))
 ggsave("FYP_contextExpl.png", width = 10)
 
-
-ggplot(df.subj %>% filter(age_group == "adult", context == "structural")) +
-  facet_wrap(vars(explanation)) +
-  geom_histogram(aes(x = essentialism)) +
-  coord_flip()
 ```
 
 ### Target analysis
@@ -485,6 +480,7 @@ The analyses as specified in the analysis plan.
 
 aov(essentialism ~ 1 + context * explanation, data = df.subj.adults) %>% 
   summary()
+
 ```
 
 ### Exploratory analysis
@@ -588,6 +584,27 @@ ggplot(df.tidy %>%  filter(question == "innateness_switch"), aes(x = context, y 
   scale_fill_brewer(palette = "Set1") +
   scale_y_continuous(limits = c(0, 1))
 ggsave("FYP_contextExpl_innateness_switch.png", width = 10)
+```
+
+```{r subj_gender}
+# essentialism by context and explanation, facet by gender and age_group
+ggplot(df.subj %>% filter(gender != "prefer not to specify"), aes(x = context, y = essentialism, fill = explanation, color = explanation)) +
+  facet_wrap(gender ~ age_group) +
+  geom_point(position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8),
+             alpha = 0.3) + 
+  stat_summary(fun.data = "mean_cl_boot",
+               position = position_dodge(width = 0.8),
+               geom = "linerange",
+               size = 1) +
+  stat_summary(fun.y = "mean",
+               position = position_dodge(width = 0.8),
+               geom = "point",
+               shape = 21,
+               color = "black",
+               size = 4) +
+  scale_fill_brewer(palette = "Set1") +
+  scale_y_continuous(limits = c(0, 1))
+ggsave("FYP_contextExpl_gender.png", width = 10)
 ```
 
 ## Discussion
