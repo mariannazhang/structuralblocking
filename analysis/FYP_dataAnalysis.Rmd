@@ -1,5 +1,6 @@
 ---
-title: Data analysis for "Essentially blocked - Can structural factors block an essentialist interpretation of a formal explanation?"
+title: "Essentially blocked: Can structural factors block the essentialist effects of formal explanations?"
+subtitle: "First-Year Project (FYP) Report"
 author: "Marianna Zhang (marianna.zhang@stanford.edu)"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
@@ -156,7 +157,7 @@ ggplot(df.pwr, aes(x = sample_size, y = power)) +
 
 ```
 
-We chose to run n=184 5-6yo and n=184 adults, which is n=46 in each cell of this 2x2 experimental design. We chose n=184 for each age group because n=46 per cell was the maximum sample size used in prior studies, and because n=46 per cell was suitable given resource constraints. 
+We chose to run n=184 5 to 6-year-olds and n=184 adults, which is n=46 in each cell of this 2x2 experimental design. We chose n=184 for each age group because n=46 per cell was the maximum sample size used in prior studies, and because n=46 per cell was suitable given resource constraints. 
 
 By running our target analysis on simulated data (based on results from prior studies and our own predictions), we found that n=184 should yield `r df.pwr$power[2] * 100`% power. 
 
@@ -196,29 +197,21 @@ We predict an interaction between context and explanation, such that in the nons
 
 
 ### Methods Addendum (Post Data Collection)
-#### Actual Sample
-<!-- actual sample size, actual power, exclusions, demographics -->
-
-We ran n=200 adults, aiming to retain the target sample size of n=184 after exclusion criteria. After exclusion criteria, we retained n=`r n.adults`.
-
-
-#### Differences from pre-data collection methods plan
-
-
-
-
-
-## Results
-
-
-### Data preparation
-
-Data preparation as specified in the analysis plan.
 
 ```{r import-data}
 #### Import data for analysis
-df.data.adults <- read_csv("../data/FYP_data_adults.csv")
+df.data.adults.1 <- read_csv("../data/FYP_data_adults.csv")
+df.data.adults.2 <- read_csv("../data/FYP_data_adults_replication.csv")
+
 df.data.children <- read_csv("../data/FYP_data_children.csv")
+```
+
+```{r combine-adult-data}
+df.data.adults.1 <- df.data.adults.1 %>% 
+  mutate(data_group = "adult original")
+df.data.adults.2 <- df.data.adults.2 %>% 
+  mutate(data_group = "adult replication")
+df.data.adults <- bind_rows(df.data.adults.1, df.data.adults.2)
 ```
 
 ```{r adults-clean}
@@ -255,7 +248,8 @@ df.data.adults <- df.data.adults %>%
          check_sample_boy, check_sample_girl,
          fc_expl_indiv, normative_group, inductivePoten, innateness_switch,
          check_attn,
-         age:ed) %>% 
+         age:ed,
+         data_group) %>% 
   rename(test_date = RecordedDate)
 
 # Remove line breaks in responses
@@ -278,7 +272,9 @@ df.data.adults$age <- df.data.adults$age %>%
 ```{r kids-clean}
 # Keep columns we care about
 df.data.children <- df.data.children %>% 
-  select(-file, -bing_id, -stim)
+  mutate(data_group = "child") %>% 
+  select(-file, -bing_id, -stim) 
+  
 ```
 
 
@@ -291,10 +287,15 @@ df.excl.children <- df.data.children %>%
             exp_error = sum(exp_error == "yes"),
             interference = sum(interference == "yes"))
   
-df.excl.adults <- df.data.adults %>% 
+df.excl.adults.1 <- df.data.adults %>% 
+  filter(data_group = "adult original") %>% 
   summarize(check_game = sum(check_game == "No"),
             check_attn = sum(check_attn != "For sure Yellow-Ball"))
 
+df.excl.adults.2 <- df.data.adults %>% 
+  filter(data_group = "adult replication") %>% 
+  summarize(check_game = sum(check_game == "No"),
+            check_attn = sum(check_attn != "For sure Yellow-Ball"))
 
 # Exclude subjects and remove exclusion columns
 df.data.children <- df.data.children %>%
@@ -311,10 +312,20 @@ df.data.adults <- df.data.adults %>%
   
 ```
 
+#### Actual Sample
+
 ```{r sample-size}
-n.adults <- nrow(df.data.adults)
+n.adults.1 <- df.data.adults %>% 
+  filter(data_group == "adult original") %>% 
+  nrow()
+n.adults.2 <- df.data.adults %>% 
+  filter(data_group == "adult replication") %>% 
+  nrow()
 n.children <- nrow(df.data.children)
 ```
+
+For the original adult study, we ran n=200 adults, aiming to retain the target sample size of n=184 after exclusion criteria. After exclusion criteria, we retained n=`r n.adults.1`. For the replication adult study, we also ran n=200 adults, retaining n=`r n.adults.2`.
+
 
 ```{r combine-data}
 df.data <- bind_rows(df.data.adults, df.data.children)
@@ -351,6 +362,19 @@ df.dem.adults_ed <- df.data.adults %>%
   count(ed)
 ```
 
+
+
+
+
+
+
+
+## Results
+
+
+### Data preparation
+
+Data preparation as specified in the analysis plan.
 
 
 ```{r recoding-tidying}
@@ -405,19 +429,19 @@ df.tidy$question <- df.tidy$question %>%
 # Calculate overall essentialism measure per subject
 df.subj <- df.tidy %>% 
   filter(!str_detect(question, "normative")) %>% 
-  group_by(subject, age, age_cat, age_group, gender, context, explanation) %>% 
+  group_by(subject, age, age_cat, age_group, data_group, gender, context, explanation) %>% 
   summarize(essentialism = mean(response, na.rm = TRUE))
 
 df.subj.children <- df.tidy %>% 
   filter(!str_detect(question, "normative")) %>% 
   filter(age_group == "child") %>% 
-  group_by(subject, age, age_cat, gender, context, explanation) %>% 
+  group_by(subject, age, age_cat, data_group, gender, context, explanation) %>% 
   summarize(essentialism = mean(response, na.rm = TRUE))
 
 df.subj.adults <- df.tidy %>% 
   filter(!str_detect(question, "normative")) %>% 
   filter(age_group == "adult") %>% 
-  group_by(subject, context, gender, explanation) %>% 
+  group_by(subject, data_group, context, gender, explanation) %>% 
   summarize(essentialism = mean(response, na.rm = TRUE))
 ```
 
@@ -448,9 +472,9 @@ theme_set(
 ```
 
 ```{r vis-all}
-# essentialism by context and explanation, facet by age_group
+# essentialism by context and explanation, facet by data_group
 ggplot(df.subj, aes(x = context, y = essentialism, fill = explanation, color = explanation)) +
-  facet_wrap(vars(age_group)) +
+  facet_wrap(vars(data_group)) +
   geom_point(position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8),
              alpha = 0.3) + 
   stat_summary(fun.data = "mean_cl_boot",
@@ -478,7 +502,10 @@ The analyses as specified in the analysis plan.
 # fit.aug <- lm(essentialism ~ 1 + context * explanation, data = df.subj.children)
 # contextExplInt.children <- anova(fit.compact, fit.aug)
 
-aov(essentialism ~ 1 + context * explanation, data = df.subj.adults) %>% 
+aov(essentialism ~ 1 + context * explanation, data = (df.subj.adults %>% filter(data_group == "adult original"))) %>% 
+  summary()
+
+aov(essentialism ~ 1 + context * explanation, data = (df.subj.adults %>% filter(data_group == "adult replication"))) %>% 
   summary()
 
 ```
@@ -486,7 +513,7 @@ aov(essentialism ~ 1 + context * explanation, data = df.subj.adults) %>%
 ### Exploratory analysis
 ```{r DVs}
 # DVs by context and explanation
-ggplot(df.tidy %>%  filter(age_group == "adult"), aes(x = context, y = response, fill = explanation, color = explanation)) +
+ggplot(df.tidy %>%  filter(data_group == "adult"), aes(x = context, y = response, fill = explanation, color = explanation)) +
   facet_wrap(vars(question)) +
   geom_point(position = position_jitterdodge(jitter.width = 0.2, jitter.height = 0.02, dodge.width = 0.8),
              alpha = 0.3) + 
@@ -508,7 +535,7 @@ ggsave("FYP_contextExpl_DV_adult.png", width = 10)
 ```{r normative}
 # Normative by context and explanation
 ggplot(df.tidy %>%  filter(question == "normative_group"), aes(x = context, y = response, fill = explanation, color = explanation)) +
-  facet_wrap(vars(age_group)) +
+  facet_wrap(vars(data_group)) +
   geom_point(position = position_jitterdodge(jitter.width = 0.2, jitter.height = 0.02, dodge.width = 0.8),
              alpha = 0.3) + 
   stat_summary(fun.data = "mean_cl_boot",
@@ -527,7 +554,7 @@ ggsave("FYP_contextExpl_normative.png", width = 10)
 
 
 # Normative by context and explanation (adults)
-ggplot(df.tidy %>%  filter(age_group == "adult", question == "normative_group"), aes(x = context, y = response, fill = explanation, color = explanation)) +
+ggplot(df.tidy %>%  filter(data_group == "adult", question == "normative_group"), aes(x = context, y = response, fill = explanation, color = explanation)) +
   geom_point(position = position_jitterdodge(jitter.width = 0.2, jitter.height = 0.02, dodge.width = 0.8),
              alpha = 0.3) + 
   stat_summary(fun.data = "mean_cl_boot",
