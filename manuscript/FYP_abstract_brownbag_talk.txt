@@ -1,0 +1,9 @@
+Devo brownbag
+Wednesday, 5/22, 12-1:15pm in Jordan Hall, Room 102
+
+Essentially blocked: the role of structural context in blocking essentialism
+Marianna Zhang & Ellen M. Markman
+
+Language provides important cues for children's developing representations of categories. Some types of language, such as generic language ("Dogs bark"), can promote psychological essentialism (essentializing the category DOG). Essentialism is a theory that certain categories map onto real distinctions in the world, and that such categories possess "essences" that causally produce innately determined and stable properties across category members. Recently, formal explanations ("Fido barks because Fido is a dog") have been proposed as a linguistic cue for essentialism.
+
+In this talk, I'll review what we know about linguistic cues for essentialism, and argue that formal explanations may be more ambiguous than previously thought, using gender categories as a case study. I'll present some intuitive reasons as well as some preliminary data from children and adults that suggest that formal explanations could yield an essentialist interpretation, or a social-structural interpretation, depending on the available context.

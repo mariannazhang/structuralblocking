@@ -1,0 +1,11 @@
+CDS 2019
+Louisville, KY
+
+Essentially blocked: The role of structural context in blocking essentialism
+Marianna Zhang & Ellen M. Markman
+
+Abstract (148/150 words)
+Language provides important cues for children's developing representations of categories. Some types of language, such as generic language ("Dogs bark"), can promote psychological essentialism (essentializing the category DOG). Psychological essentialism is the belief that certain categories map onto real distinctions in the world, and that such categories possess "essences" that causally produce innately determined and stable properties across category members. Recently, formal explanations ("Fido barks because Fido is a dog") have been proposed as a linguistic cue for essentialism, since they often yield essentialist interpretations. However, formal explanations may be more ambiguous than previously thought. When using gender categories as a case study, preliminary data from children and adults suggest that formal explanations could yield either an essentialist interpretation, or a social-structural interpretation, depending on the available context. As a result, contextual information could block an essentialist interpretation of a formal explanation, and promote a social-structural interpretation instead.
+
+
+Using gender categories as a case study, preliminary data from children and adults suggest that formal explanations involving gender (“Suzy plays Yellow-Ball because Suzy is a girl”) could yield either an essentialist interpretation (girls inherently like playing Yellow-Ball), or a social-structural interpretation (girls are situated in an environment that skews them towards playing Yellow-Ball), depending on the available context.
