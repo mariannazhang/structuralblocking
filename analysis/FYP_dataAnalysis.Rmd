@@ -23,7 +23,17 @@ require("knitr")
 #### Load relevant libraries and functions
 library(tidyverse)
 library(broom)
-library(paramtest) # power analysis
+library(paramtest)# power analysis
+library(lmerTest) # linear mixed effects model
+library(brms)     # Bayesian mixed effects model
+```
+
+```{r}
+# Set visualization theme
+theme_set(
+  ggthemes::theme_few() +
+  theme(text = element_text(size = 16)) # large text size for presentation figures
+)
 ```
 
 ## Introduction
@@ -114,7 +124,7 @@ ggplot(df.predicted, aes(x = context, y = essentialism, fill = explanation, colo
                size = 4) +
   scale_fill_brewer(palette = "Set1") +
   scale_y_continuous(limits = c(0, 1))
-ggsave("FYP_predicted.png", width = 6.25)
+ggsave("FYP_predicted.png", width = 5.5)
 ```
 
 ```{r power-analysis-kids-2}
@@ -212,6 +222,8 @@ df.data.adults.1 <- df.data.adults.1 %>%
 df.data.adults.2 <- df.data.adults.2 %>% 
   mutate(data_group = "adult replication")
 df.data.adults <- bind_rows(df.data.adults.1, df.data.adults.2)
+df.data.adults <- df.data.adults %>% 
+  mutate(age_cat = "adult")
 ```
 
 ```{r adults-clean}
@@ -249,7 +261,8 @@ df.data.adults <- df.data.adults %>%
          fc_expl_indiv, normative_group, inductivePoten, innateness_switch,
          check_attn,
          age:ed,
-         data_group) %>% 
+         data_group,
+         age_cat) %>% 
   rename(test_date = RecordedDate)
 
 # Remove line breaks in responses
@@ -274,7 +287,10 @@ df.data.adults$age <- df.data.adults$age %>%
 df.data.children <- df.data.children %>% 
   mutate(data_group = "child") %>% 
   select(-file, -bing_id, -stim) 
-  
+
+# Convert age_cat to character
+df.data.children$age_cat <- df.data.children$age_cat %>%
+  as.character()
 ```
 
 
@@ -288,12 +304,12 @@ df.excl.children <- df.data.children %>%
             interference = sum(interference == "yes"))
   
 df.excl.adults.1 <- df.data.adults %>% 
-  filter(data_group = "adult original") %>% 
+  filter(data_group == "adult original") %>% 
   summarize(check_game = sum(check_game == "No"),
             check_attn = sum(check_attn != "For sure Yellow-Ball"))
 
 df.excl.adults.2 <- df.data.adults %>% 
-  filter(data_group = "adult replication") %>% 
+  filter(data_group == "adult replication") %>% 
   summarize(check_game = sum(check_game == "No"),
             check_attn = sum(check_attn != "For sure Yellow-Ball"))
 
@@ -322,6 +338,7 @@ n.adults.2 <- df.data.adults %>%
   filter(data_group == "adult replication") %>% 
   nrow()
 n.children <- nrow(df.data.children)
+n.children.location <- count(df.data.children, location)
 ```
 
 For the original adult study, we ran n=200 adults, aiming to retain the target sample size of n=184 after exclusion criteria. After exclusion criteria, we retained n=`r n.adults.1`. For the replication adult study, we also ran n=200 adults, retaining n=`r n.adults.2`.
@@ -335,10 +352,6 @@ df.data <- bind_rows(df.data.adults, df.data.children)
 #### Demographics
 # Add age categorical variable
 df.data <- df.data %>% 
-  mutate(age_cat = case_when(
-    age >= 5 & age < 6 ~ "5",
-    age >= 6 & age < 7 ~ "6",
-    age >= 18 ~ "adult")) %>% 
   mutate(age_group = case_when(
     age < 7 ~ "child",
     age >= 18 ~ "adult"))
@@ -397,6 +410,11 @@ df.data$inductivePoten <-
                   "Maybe Green-Ball" = 2/3,
                   "For sure Green-Ball" = 1)))
 
+df.data$normative_group <- df.data$normative_group %>% 
+  recode("Okay" = 0,
+         "Not okay" = 1)
+
+
 df.data$innateness_switch <- 
   if_else(df.data$cb == "girlsYellow", 
           (recode(df.data$innateness_switch,
@@ -410,9 +428,7 @@ df.data$innateness_switch <-
                   "Maybe Yellow-Ball" = 1/3,
                   "For sure Yellow-Ball" = 0)))
 
-df.data$normative_group <- df.data$normative_group %>% 
-  recode("Okay" = 0,
-         "Not okay" = 1)
+
 
 
 # Gather to tidy long form
@@ -463,20 +479,13 @@ df.means.children <- df.subj.children %>%
 df.means.children
 ```
 
-```{r}
-# Set visualization theme
-theme_set(
-  ggthemes::theme_few() +
-  theme(text = element_text(size = 16)) # large text size for presentation figures
-)
-```
 
 ```{r vis-all}
 # essentialism by context and explanation, facet by data_group
 ggplot(df.subj, aes(x = context, y = essentialism, fill = explanation, color = explanation)) +
   facet_wrap(vars(data_group)) +
   geom_point(position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8),
-             alpha = 0.3) + 
+             alpha = 0.3) +
   stat_summary(fun.data = "mean_cl_boot",
                position = position_dodge(width = 0.8),
                geom = "linerange",
@@ -491,28 +500,90 @@ ggplot(df.subj, aes(x = context, y = essentialism, fill = explanation, color = e
   scale_y_continuous(limits = c(0, 1))
 ggsave("FYP_contextExpl.png", width = 10)
 
+# essentialism by context and explanation, facet by data_group
+ggplot(df.subj %>% filter(data_group == "child"), aes(x = context, y = essentialism, fill = explanation, color = explanation)) +
+  geom_point(position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8),
+             alpha = 0.3) +
+  stat_summary(fun.data = "mean_cl_boot",
+               position = position_dodge(width = 0.8),
+               geom = "linerange",
+               size = 1) +
+  stat_summary(fun.y = "mean",
+               position = position_dodge(width = 0.8),
+               geom = "point",
+               shape = 21,
+               color = "black",
+               size = 4) +
+  scale_fill_brewer(palette = "Set1") +
+  scale_y_continuous(limits = c(0, 1))
+ggsave("FYP_contextExpl_children.png", width = 5)
+
 ```
 
 ### Target analysis
 
 The analyses as specified in the analysis plan. 
 
-```{r anova}
-# fit.compact <- lm(essentialism ~ 1 + context + explanation, data = df.subj.children)
-# fit.aug <- lm(essentialism ~ 1 + context * explanation, data = df.subj.children)
-# contextExplInt.children <- anova(fit.compact, fit.aug)
-
-aov(essentialism ~ 1 + context * explanation, data = (df.subj.adults %>% filter(data_group == "adult original"))) %>% 
+```{r lmer-data-analysis}
+lmer(response ~ 1 + context * explanation + (1|subject) + (1|question), data = (df.tidy %>% filter(data_group == "adult original"))) %>% 
   summary()
 
-aov(essentialism ~ 1 + context * explanation, data = (df.subj.adults %>% filter(data_group == "adult replication"))) %>% 
+lmer(response ~ 1 + context * explanation + (1|subject) + (1|question), data = (df.tidy %>% filter(data_group == "adult replication"))) %>% 
   summary()
 
+lmer(response ~ 1 + context * explanation + (1|subject) + (1|question), data = (df.tidy %>% filter(data_group == "child"))) %>% 
+  summary()
 ```
 
 ### Exploratory analysis
+```{r Bayesian-data-analysis}
+# build Bayesian model for interaction
+fit.brm.adultOriginal <- brm(
+  response ~ 1 + context * explanation + (1|subject) + (1|question), 
+  data = (df.tidy %>% filter(data_group == "adult original")),
+  save_all_pars = T,
+  file = "fit.brm.adultOriginal")
+fit.brm.adultOriginal %>% summary()
+
+# posterior probability of interaction
+post.adultOriginal <- hypothesis(fit.brm.adultOriginal,
+           hypothesis = "contextstructural:explanationformal > 0")$hypothesis$Post.Prob
+post.adultOriginal
+
+# build compact Bayesian model for no interaction
+fit.brm.adultOriginal.compact <- brm(
+  response ~ 1 + context + explanation + (1|subject) + (1|question), 
+  data = (df.tidy %>% filter(data_group == "adult original")),
+  save_all_pars = T,
+  file = "fit.brm.adultOriginal.compact")
+
+## Bayes factor for null vs difference between conditions
+bf.adultOriginal <- bayes_factor(fit.brm.adultOriginal, fit.brm.adultOriginal.compact)$bf
+bf.adultOriginal
+```
+
+
 ```{r DVs}
 # DVs by context and explanation
+ggplot(df.tidy, aes(x = context, y = response, fill = explanation, color = explanation)) +
+  facet_grid(question ~ data_group) +
+  geom_point(position = position_jitterdodge(jitter.width = 0.2, jitter.height = 0.02, dodge.width = 0.8),
+             alpha = 0.3) + 
+  stat_summary(fun.data = "mean_cl_boot",
+               position = position_dodge(width = 0.8),
+               geom = "linerange",
+               size = 1) +
+  stat_summary(fun.y = "mean",
+               position = position_dodge(width = 0.8),
+               geom = "point",
+               shape = 21,
+               color = "black",
+               size = 4) +
+  scale_fill_brewer(palette = "Set1") +
+  scale_y_continuous(limits = c(0, 1))
+ggsave("FYP_contextExpl_DV.png", height = 8, width = 10)
+
+
 ggplot(df.tidy %>%  filter(data_group == "adult"), aes(x = context, y = response, fill = explanation, color = explanation)) +
   facet_wrap(vars(question)) +
   geom_point(position = position_jitterdodge(jitter.width = 0.2, jitter.height = 0.02, dodge.width = 0.8),
@@ -530,6 +601,24 @@ ggplot(df.tidy %>%  filter(data_group == "adult"), aes(x = context, y = response
   scale_fill_brewer(palette = "Set1") +
   scale_y_continuous(limits = c(0, 1))
 ggsave("FYP_contextExpl_DV_adult.png", width = 10)
+
+ggplot(df.tidy %>%  filter(data_group == "child"), aes(x = context, y = response, fill = explanation, color = explanation)) +
+  facet_wrap(vars(question)) +
+  geom_point(position = position_jitterdodge(jitter.width = 0.2, jitter.height = 0.02, dodge.width = 0.8),
+             alpha = 0.3) + 
+  stat_summary(fun.data = "mean_cl_boot",
+               position = position_dodge(width = 0.8),
+               geom = "linerange",
+               size = 1) +
+  stat_summary(fun.y = "mean",
+               position = position_dodge(width = 0.8),
+               geom = "point",
+               shape = 21,
+               color = "black",
+               size = 4) +
+  scale_fill_brewer(palette = "Set1") +
+  scale_y_continuous(limits = c(0, 1))
+ggsave("FYP_contextExpl_DV_child.png", width = 10)
 ```
 
 ```{r normative}
@@ -595,7 +684,7 @@ ggsave("FYP_contextExpl_DV_child.png", width = 10)
 ```{r innateness_switch}
 # Innateness switch by context and explanation
 ggplot(df.tidy %>%  filter(question == "innateness_switch"), aes(x = context, y = response, fill = explanation, color = explanation)) +
-  facet_wrap(vars(age_group)) +
+  facet_wrap(vars(data_group)) +
   geom_point(position = position_jitterdodge(jitter.width = 0.2, jitter.height = 0.02, dodge.width = 0.8),
              alpha = 0.3) + 
   stat_summary(fun.data = "mean_cl_boot",
