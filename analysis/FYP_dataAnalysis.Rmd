@@ -21,11 +21,14 @@ require("knitr")
 
 ```{r setup}
 #### Load relevant libraries and functions
+library(Hmisc)
 library(tidyverse)
 library(broom)
 library(paramtest)# power analysis
 library(lmerTest) # linear mixed effects model
 library(brms)     # Bayesian mixed effects model
+library(tidybayes) # Bayes factor
+library(gridExtra) # side by side plots
 ```
 
 ```{r}
@@ -96,10 +99,10 @@ df.predicted <- tibble(
   # means
   essentialism = c(0.590, # nonstructural control ~ Muradoglu et al control condition (exact mean from data), also Vasilyeva et al structural condition (2.5417 out of 1 to 4 reversed scale = 1-(2.5417-1)/(4-1) = 0.49)
                    0.645, # nonstructural formal ~ Muradoglu et al formal condition (exact mean from data)
-                   1-(3.1667-1)/(4-1), # structural control ~ Vasilyeva et al structural condition (3.1667 out of 1 to 4 reversed scale = 1-(3.1667-1)/(4-1) = 0.28)
+                   1-(3.1667-1)/(4-1), # structural control ~ Vasilyeva et al 5-6yo structural condition (3.1667 out of 1 to 4 reversed scale = 1-(3.1667-1)/(4-1) = 0.28)
                    1-(3.1667-1)/(4-1)), # structural formal ~ we predict to be the same as structural control = 0.28
   
-  sd = c(0.158, # nonstructural control ~ Muradoglu et al control condition (exact SD from average of 5 items, varying from 2-point to 3-point), also Vasilyeva et al structural condition = (0.21685)/(4-1) = (SD = SE * sqrt(n))
+  sd = c(0.158, # nonstructural control ~ Muradoglu et al control condition (exact SD from average of 5 items, varying from 2-point to 3-point), also Vasilyeva et al 5-6yo structural condition = (0.21685)/(4-1) = (SD = SE * sqrt(n))
          0.187, # nonstructural formal ~ Muradoglu et al formal condition (exact SD from average of 5 items, varying from 2-point to 3-point)
          0.17, # given our paradigm, expect similar SD to Muradoglu et al?
          0.17),
@@ -124,7 +127,7 @@ ggplot(df.predicted, aes(x = context, y = essentialism, fill = explanation, colo
                size = 4) +
   scale_fill_brewer(palette = "Set1") +
   scale_y_continuous(limits = c(0, 1))
-ggsave("FYP_predicted.png", width = 5.5)
+# ggsave("FYP_predicted.png", width = 5.5)
 ```
 
 ```{r power-analysis-kids-2}
@@ -212,6 +215,7 @@ We predict an interaction between context and explanation, such that in the nons
 #### Import data for analysis
 df.data.adults.1 <- read_csv("../data/FYP_data_adults.csv")
 df.data.adults.2 <- read_csv("../data/FYP_data_adults_replication.csv")
+df.data.adults.3 <- read_csv("../data/FYP_data_adults_orderReversed.csv")
 
 df.data.children <- read_csv("../data/FYP_data_children.csv")
 ```
@@ -221,7 +225,14 @@ df.data.adults.1 <- df.data.adults.1 %>%
   mutate(data_group = "adult original")
 df.data.adults.2 <- df.data.adults.2 %>% 
   mutate(data_group = "adult replication")
-df.data.adults <- bind_rows(df.data.adults.1, df.data.adults.2)
+df.data.adults.3 <- df.data.adults.3 %>% 
+  mutate(data_group = "adult order reversed")
+
+df.data.adults <- bind_rows(
+  df.data.adults.1, 
+  df.data.adults.2, 
+  df.data.adults.3)
+
 df.data.adults <- df.data.adults %>% 
   mutate(age_cat = "adult")
 ```
@@ -291,6 +302,7 @@ df.data.children <- df.data.children %>%
 # Convert age_cat to character
 df.data.children$age_cat <- df.data.children$age_cat %>%
   as.character()
+
 ```
 
 
@@ -303,13 +315,18 @@ df.excl.children <- df.data.children %>%
             exp_error = sum(exp_error == "yes"),
             interference = sum(interference == "yes"))
   
-df.excl.adults.1 <- df.data.adults %>% 
+df.excl.adults.original <- df.data.adults %>% 
   filter(data_group == "adult original") %>% 
   summarize(check_game = sum(check_game == "No"),
             check_attn = sum(check_attn != "For sure Yellow-Ball"))
 
-df.excl.adults.2 <- df.data.adults %>% 
+df.excl.adults.rep <- df.data.adults %>% 
   filter(data_group == "adult replication") %>% 
+  summarize(check_game = sum(check_game == "No"),
+            check_attn = sum(check_attn != "For sure Yellow-Ball"))
+
+df.excl.adults.orderReversed <- df.data.adults %>% 
+  filter(data_group == "adult order reversed") %>% 
   summarize(check_game = sum(check_game == "No"),
             check_attn = sum(check_attn != "For sure Yellow-Ball"))
 
@@ -346,6 +363,13 @@ For the original adult study, we ran n=200 adults, aiming to retain the target s
 
 ```{r combine-data}
 df.data <- bind_rows(df.data.adults, df.data.children)
+
+# Order data_group for plotting later; factor context, explanation
+df.data <- df.data %>% 
+  mutate(data_group = factor(data_group, levels = c("adult original", "adult replication", "adult order reversed", "child")),
+         context = factor(context),
+         explanation = factor(explanation))
+
 ```
 
 ```{r dem}
@@ -465,7 +489,7 @@ df.subj.adults <- df.tidy %>%
 ```{r}
 # Overall essentialism measure across subjects by condition
 df.means.adults <- df.subj.adults %>%
-  group_by(context, explanation) %>% 
+  group_by(data_group, context, explanation) %>% 
   summarize(avg = mean(essentialism, na.rm = TRUE),
             sd = sd(essentialism, na.rm = TRUE), 
             n = length(unique(subject)))
@@ -483,6 +507,7 @@ df.means.children
 ```{r vis-all}
 # essentialism by context and explanation, facet by data_group
 ggplot(df.subj, aes(x = context, y = essentialism, fill = explanation, color = explanation)) +
+  # facet_grid(.~ data_group) + # plot as one row
   facet_wrap(vars(data_group)) +
   geom_point(position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8),
              alpha = 0.3) +
@@ -495,12 +520,14 @@ ggplot(df.subj, aes(x = context, y = essentialism, fill = explanation, color = e
                geom = "point",
                shape = 21,
                color = "black",
-               size = 4) +
+               size = 3) +
   scale_fill_brewer(palette = "Set1") +
   scale_y_continuous(limits = c(0, 1))
-ggsave("FYP_contextExpl.png", width = 10)
+ggsave("FYP_contextExpl.png", width = 7, height = 7)
+```
 
-# essentialism by context and explanation, facet by data_group
+```{r vis-child}
+# essentialism by context and explanation, children only
 ggplot(df.subj %>% filter(data_group == "child"), aes(x = context, y = essentialism, fill = explanation, color = explanation)) +
   geom_point(position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8),
              alpha = 0.3) +
@@ -531,12 +558,17 @@ lmer(response ~ 1 + context * explanation + (1|subject) + (1|question), data = (
 lmer(response ~ 1 + context * explanation + (1|subject) + (1|question), data = (df.tidy %>% filter(data_group == "adult replication"))) %>% 
   summary()
 
+lm1 <- lmer(response ~ 1 + context * explanation + (1|subject) + (1|question), data = (df.tidy %>% filter(data_group == "adult order reversed")))
+summary(lm1)
+
+difflsmeans(lm1)
+
 lmer(response ~ 1 + context * explanation + (1|subject) + (1|question), data = (df.tidy %>% filter(data_group == "child"))) %>% 
   summary()
 ```
 
 ### Exploratory analysis
-```{r Bayesian-data-analysis}
+```{r Bayesian-data-analysis-adult-original}
 # build Bayesian model for interaction
 fit.brm.adultOriginal <- brm(
   response ~ 1 + context * explanation + (1|subject) + (1|question), 
@@ -561,6 +593,59 @@ fit.brm.adultOriginal.compact <- brm(
 bf.adultOriginal <- bayes_factor(fit.brm.adultOriginal, fit.brm.adultOriginal.compact)$bf
 bf.adultOriginal
 ```
+
+```{r Bayesian-data-analysis-adult-rep}
+# build Bayesian model for interaction
+fit.brm.adultRep <- brm(
+  response ~ 1 + context * explanation + (1|subject) + (1|question), 
+  data = (df.tidy %>% filter(data_group == "adult replication")),
+  save_all_pars = T,
+  file = "fit.brm.adultRep")
+fit.brm.adultRep %>% summary()
+
+# posterior probability of interaction
+post.adultRep <- hypothesis(fit.brm.adultRep,
+           hypothesis = "contextstructural:explanationformal > 0")$hypothesis$Post.Prob
+post.adultRep
+
+# build compact Bayesian model for no interaction
+fit.brm.adultRep.compact <- brm(
+  response ~ 1 + context + explanation + (1|subject) + (1|question), 
+  data = (df.tidy %>% filter(data_group == "adult replication")),
+  save_all_pars = T,
+  file = "fit.brm.adultRep.compact")
+
+## Bayes factor for null vs difference between conditions
+bf.adultRep <- bayes_factor(fit.brm.adultRep, fit.brm.adultRep.compact)$bf
+bf.adultRep
+```
+
+```{r Bayesian-data-analysis-child}
+# build Bayesian model for interaction
+fit.brm.child <- brm(
+  response ~ 1 + context * explanation + (1|subject) + (1|question), 
+  data = (df.tidy %>% filter(data_group == "child")),
+  save_all_pars = T,
+  file = "fit.brm.child")
+fit.brm.child %>% summary()
+
+# posterior probability of interaction
+post.child <- hypothesis(fit.brm.child,
+           hypothesis = "contextstructural:explanationformal > 0")$hypothesis$Post.Prob
+post.child
+
+# build compact Bayesian model for no interaction
+fit.brm.child.compact <- brm(
+  response ~ 1 + context + explanation + (1|subject) + (1|question), 
+  data = (df.tidy %>% filter(data_group == "child")),
+  save_all_pars = T,
+  file = "fit.brm.child.compact")
+
+## Bayes factor for null vs difference between conditions
+bf.child <- bayes_factor(fit.brm.child, fit.brm.child.compact)$bf
+bf.child
+```
+
 
 
 ```{r DVs}
@@ -640,50 +725,11 @@ ggplot(df.tidy %>%  filter(question == "normative_group"), aes(x = context, y = 
   scale_fill_brewer(palette = "Set1") +
   scale_y_continuous(limits = c(0, 1))
 ggsave("FYP_contextExpl_normative.png", width = 10)
-
-
-# Normative by context and explanation (adults)
-ggplot(df.tidy %>%  filter(data_group == "adult", question == "normative_group"), aes(x = context, y = response, fill = explanation, color = explanation)) +
-  geom_point(position = position_jitterdodge(jitter.width = 0.2, jitter.height = 0.02, dodge.width = 0.8),
-             alpha = 0.3) + 
-  stat_summary(fun.data = "mean_cl_boot",
-               position = position_dodge(width = 0.8),
-               geom = "linerange",
-               size = 1) +
-  stat_summary(fun.y = "mean",
-               position = position_dodge(width = 0.8),
-               geom = "point",
-               shape = 21,
-               color = "black",
-               size = 4) +
-  scale_fill_brewer(palette = "Set1") +
-  scale_y_continuous(limits = c(0, 1))
-ggsave("FYP_contextExpl_normative_adult.png", width = 10)
-
-
-# Normative by context and explanation (child)
-ggplot(df.tidy %>%  filter(age_group == "child"), aes(x = context, y = response, fill = explanation, color = explanation)) +
-  facet_wrap(vars(question)) +
-  geom_point(position = position_jitterdodge(jitter.width = 0.2, jitter.height = 0.02, dodge.width = 0.8),
-             alpha = 0.3) + 
-  stat_summary(fun.data = "mean_cl_boot",
-               position = position_dodge(width = 0.8),
-               geom = "linerange",
-               size = 1) +
-  stat_summary(fun.y = "mean",
-               position = position_dodge(width = 0.8),
-               geom = "point",
-               shape = 21,
-               color = "black",
-               size = 4) +
-  scale_fill_brewer(palette = "Set1") +
-  scale_y_continuous(limits = c(0, 1))
-ggsave("FYP_contextExpl_DV_child.png", width = 10)
 ```
 
 ```{r innateness_switch}
 # Innateness switch by context and explanation
-ggplot(df.tidy %>%  filter(question == "innateness_switch"), aes(x = context, y = response, fill = explanation, color = explanation)) +
+innateness_switch <- ggplot(df.tidy %>%  filter(question == "innateness_switch"), aes(x = context, y = response, fill = explanation, color = explanation)) +
   facet_wrap(vars(data_group)) +
   geom_point(position = position_jitterdodge(jitter.width = 0.2, jitter.height = 0.02, dodge.width = 0.8),
              alpha = 0.3) + 
@@ -699,6 +745,7 @@ ggplot(df.tidy %>%  filter(question == "innateness_switch"), aes(x = context, y 
                size = 4) +
   scale_fill_brewer(palette = "Set1") +
   scale_y_continuous(limits = c(0, 1))
+innateness_switch
 ggsave("FYP_contextExpl_innateness_switch.png", width = 10)
 ```
 
@@ -721,6 +768,46 @@ ggplot(df.subj %>% filter(gender != "prefer not to specify"), aes(x = context, y
   scale_fill_brewer(palette = "Set1") +
   scale_y_continuous(limits = c(0, 1))
 ggsave("FYP_contextExpl_gender.png", width = 10)
+```
+
+Was the control statement ("Suzy is a girl. She plays Yellow-Ball") too strong against the formal explanation ("Suzy plays Yellow-Ball because she is a girl")? Comparison with the innateness_switch (mutability) item from 5-6yo in Vasilyeva et al, 2018 might be able to tell us what the data might have looked like had we said nothing at all. 
+
+```{r comp-Vasilyeva}
+# Import Vasilyeva et al 2018 summary statistics
+df.Vasilyeva.summary <- read_csv("../data/VasilyevaGopnikLombrozo_2018_table.csv")
+
+# Transform 1-4 mutability item into 0-1 innateness_switch item
+df.Vasilyeva.scaled <- df.Vasilyeva.summary %>% 
+  # filter(age == "5-6") %>% 
+  # select(-age) %>% 
+  mutate(internalist_mean = 1-(internalist_mean-1) / (4-1),
+         structural_mean = 1-(structural_mean-1) / (4-1),
+         internalist_se = internalist_se / (4-1),
+         structural_se = structural_se / (4-1)) %>% 
+  rename(nonstructural_mean = internalist_mean,
+         nonstructural_se = internalist_se) %>% 
+  gather(context, response, -age) %>% 
+  separate(context, c("context", "stat"), "_") %>% 
+  spread(stat, response)
+
+# Plot Vasilyeva et al 2018
+VasilyevaEtAl_2018 <- ggplot(df.Vasilyeva.scaled, aes(x = context, y = mean)) +
+  facet_wrap(vars(age)) +
+  geom_point(position = position_dodge(width = 0.8),
+             size = 4) + 
+  geom_linerange(aes(ymin = mean - se, ymax = mean + se), 
+                width = 0.2,
+                position = position_dodge(width = 0.8)) +
+  scale_fill_brewer(palette = "Set1") +
+  scale_y_continuous(limits = c(0, 1)) 
+VasilyevaEtAl_2018
+ggsave("VasilyevaEtAl_2018_innateness_switch.png")
+
+# compare against our innateness_switch data
+grid.arrange(VasilyevaEtAl_2018, innateness_switch, nrow = 1)
+g <- arrangeGrob(VasilyevaEtAl_2018, innateness_switch, nrow = 1)
+ggsave("VasilyevaEtAl_2018_comparison.png", g, width = 20)
+
 ```
 
 ## Discussion
